@@ -31,3 +31,11 @@
 .called-banner--active{background:linear-gradient(90deg, rgba(99,102,241,.18), rgba(99,102,241,.06));border-color:#4f46e5}
 .called-banner__label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .called-banner__name{font-weight:800;font-size:clamp(20px, 5vw, 36px);line-height:1.15}
+
+/* titoli uniformi */
+.section-title{font-weight:800;font-size:clamp(18px,4vw,20px)}
+
+/* evidenza chi ha offerto nella lobby */
+.list__row--bid{background:linear-gradient(90deg, rgba(34,197,94,.15), rgba(34,197,94,.04)); border:1px solid rgba(34,197,94,.35); border-radius:12px}
+.badge--offer{background:#16a34a;color:#0b0d12}
+*/
