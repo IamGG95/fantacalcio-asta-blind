@@ -1,9 +1,9 @@
-// client/src/App.jsx — UI rinnovata ripristinata
-// Requisiti attivi:
-// - Solo ADMIN (primo utente) può chiamare il giocatore e cambiare il countdown
-// - Countdown default 10s
-// - Puntata illimitata in crediti (nessun budget; rimossi riferimenti UI al budget e "la tua scheda")
-// - Offerte sempre nascoste fino al reveal
+// client/src/App.jsx — Auction panel unificato + Lobby discreta in basso
+// Requisiti:
+// - Solo ADMIN (primo utente) può chiamare il giocatore e cambiare il countdown (default 10s)
+// - Puntata illimitata in crediti, nessun budget
+// - Offerte nascoste fino al reveal
+// - UI: sezione unica "Asta" con giocatore ben evidenziato; Lobby spostata in basso e più discreta
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
@@ -107,7 +107,6 @@ export default function App() {
     setJoined(false);
   }
 
-  // SOLO ADMIN può cambiare countdown
   function setServerSettingsDuration(newDuration) {
     if (!amIAdmin) return alert('Solo l\'admin può modificare il countdown');
     if (!socketRef.current || !socketRef.current.connected) return;
@@ -117,7 +116,6 @@ export default function App() {
     showToast(`Countdown impostato a ${Math.round(numeric)}s`);
   }
 
-  // SOLO ADMIN può chiamare il giocatore
   function callPlayer() {
     if (!amIAdmin) return alert('Solo l\'admin può chiamare un giocatore');
     if (!callPlayerName) return alert('Inserisci il nome del giocatore');
@@ -127,7 +125,6 @@ export default function App() {
     setCallPlayerName('');
   }
 
-  // Puntata illimitata in crediti
   function sendBid() {
     if (!auction) return alert('Nessuna asta in corso');
     const numeric = Number(myBid);
@@ -162,8 +159,94 @@ export default function App() {
           </section>
         </main>
       ) : (
-        <main className="container grid">
+        <main className="container">
+          {/* AUCTION PANEL UNIFICATO */}
           <section className="card card--stretch">
+            <div className="auction__header">
+              <div className="auction__title">Asta in corso</div>
+              <div className="auction__controls">
+                <span className="muted">Countdown: <strong>{settings.duration}s</strong></span>
+                {amIAdmin && (
+                  <input
+                    className="input input--sm"
+                    type="number"
+                    min="1"
+                    defaultValue={settings.duration}
+                    onBlur={(e) => setServerSettingsDuration(e.target.value)}
+                    title="Modifica countdown (solo admin)"
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Banner giocatore ben evidenziato */}
+            <div className={"called-banner " + (auction ? 'called-banner--active' : 'called-banner--idle')}>
+              <div className="called-banner__label">Giocatore</div>
+              <div className="called-banner__name">{auction ? auction.playerName : '— in attesa —'}</div>
+            </div>
+
+            {/* RIGA input admin per chiamare quando NON c'è un'asta */}
+            {!auction && amIAdmin && (
+              <div className="row mt-12">
+                <input
+                  className="input flex-1"
+                  placeholder="Scrivi il nome del giocatore da chiamare"
+                  value={callPlayerName}
+                  onChange={(e) => setCallPlayerName(e.target.value)}
+                />
+                <button className="btn btn--success" onClick={callPlayer}>Chiama</button>
+              </div>
+            )}
+            {!auction && !amIAdmin && (
+              <p className="muted mt-8">In attesa che l'admin chiami un giocatore…</p>
+            )}
+
+            {/* Se countdown attivo, mostra barra e input offerta */}
+            {auction && (
+              <>
+                <div className="progress mt-12" aria-label="conto alla rovescia">
+                  <div className={"progress__bar " + (timeLeft <= 3 ? 'progress__bar--warn' : '')} style={{ width: `${pct}%` }} />
+                </div>
+                <div className="timer">{timeLeft}s</div>
+
+                <div className="row mt-12">
+                  <input
+                    className="input flex-1"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="Inserisci offerta (crediti)"
+                    value={myBid}
+                    onChange={e => setMyBid(e.target.value)}
+                  />
+                  <button className="btn btn--indigo" onClick={sendBid}>Invia</button>
+                </div>
+                <div className="pills mt-8">
+                  {[1,5,10,20].map(n => (<button key={n} className="pill" onClick={() => quickAdd(n)}>+{n}</button>))}
+                  <button className="pill pill--ghost" onClick={() => setMyBid('')}>Reset</button>
+                </div>
+              </>
+            )}
+
+            {/* RIEPILOGO OFFERTE */}
+            <div className="card__sub">
+              <div className="card__subtitle">Ultimo risultato</div>
+              {offers && offers.length ? (
+                <ol className="ranking">
+                  {offers.map((o, idx) => (
+                    <li key={o.socketId || idx} className={"ranking__row " + (winner && winner.socketId === o.socketId ? 'ranking__row--win' : '')}>
+                      <span className="ranking__name">{String(o.name)}</span>
+                      <span className="ranking__amount">{String(o.amount)} crediti</span>
+                    </li>
+                  ))}
+                </ol>
+              ) : (
+                <p className="muted">Nessun risultato recente</p>
+              )}
+            </div>
+          </section>
+
+          {/* LOBBY compatta e in secondo piano */}
+          <section className="card card--muted mt-12">
             <div className="card__header"><h2>Lobby</h2></div>
             <ul className="list">
               {players.map(p => (
@@ -179,67 +262,6 @@ export default function App() {
             <div className="row mt-12">
               <button className="btn btn--danger" onClick={leaveLobby}>Esci</button>
             </div>
-          </section>
-
-          <section className="card card--stretch">
-            <div className="card__header"><h2>Chiamata giocatore</h2></div>
-            {amIAdmin ? (
-              <>
-                <div className="row">
-                  <input className="input flex-1" placeholder="Es. Lautaro Martinez" value={callPlayerName} onChange={e => setCallPlayerName(e.target.value)} />
-                  <button className="btn btn--success" onClick={callPlayer}>Chiama</button>
-                </div>
-                <p className="muted mt-8">Countdown attuale: <strong>{settings.duration}s</strong></p>
-                <div className="row mt-8">
-                  <input type="number" min="1" className="input" defaultValue={settings.duration} onBlur={(e) => setServerSettingsDuration(e.target.value)} />
-                  <span className="muted">(solo admin)</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="muted">In attesa che l'admin chiami un giocatore…</p>
-                <p className="muted mt-8">Countdown attuale: <strong>{settings.duration}s</strong></p>
-              </>
-            )}
-          </section>
-
-          <section className="card">
-            <div className="card__header"><h3>Asta in corso</h3></div>
-            {auction ? (
-              <>
-                <div className="kv"><span>Giocatore</span><strong>{String(auction.playerName)}</strong></div>
-                <div className="progress mt-8" aria-label="conto alla rovescia">
-                  <div className={"progress__bar " + (timeLeft <= 3 ? 'progress__bar--warn' : '')} style={{ width: `${pct}%` }} />
-                </div>
-                <div className="timer">{timeLeft}s</div>
-                <div className="row mt-12">
-                  <input className="input flex-1" inputMode="numeric" pattern="[0-9]*" placeholder="Inserisci offerta (crediti)" value={myBid} onChange={e => setMyBid(e.target.value)} />
-                  <button className="btn btn--indigo" onClick={sendBid}>Invia</button>
-                </div>
-                <div className="pills mt-8">
-                  {[1,5,10,20].map(n => (<button key={n} className="pill" onClick={() => quickAdd(n)}>+{n}</button>))}
-                  <button className="pill pill--ghost" onClick={() => setMyBid('')}>Reset</button>
-                </div>
-              </>
-            ) : (
-              <p className="muted">Nessuna asta in corso</p>
-            )}
-          </section>
-
-          <section className="card">
-            <div className="card__header"><h3>Ultimo risultato</h3></div>
-            {offers && offers.length ? (
-              <ol className="ranking">
-                {offers.map((o, idx) => (
-                  <li key={o.socketId || idx} className={"ranking__row " + (winner && winner.socketId === o.socketId ? 'ranking__row--win' : '')}>
-                    <span className="ranking__name">{String(o.name)}</span>
-                    <span className="ranking__amount">{String(o.amount)} crediti</span>
-                  </li>
-                ))}
-              </ol>
-            ) : (
-              <p className="muted">Nessun risultato recente</p>
-            )}
           </section>
         </main>
       )}
