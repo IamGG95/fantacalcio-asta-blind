@@ -16,24 +16,43 @@
   --gold:#fbbf24;        /* badge admin */
 }
 
-/* -1pt generale (15px) */
+/* ===== Base (font -1pt) ===== */
 *{box-sizing:border-box}
 html,body,#root{height:100%}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue','Noto Sans',Arial;font-size:15px}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",Arial;
+  font-size:15px; /* −1pt globale */
+}
 
+/* ===== Layout e card ===== */
 .app{min-height:100%;display:flex;flex-direction:column}
 .container{width:100%;max-width:1100px;margin-inline:auto;padding:16px}
 
-.app__header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.app__header{
+  position:sticky;top:0;z-index:10;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border)
+}
 .brand{font-weight:700}
 .status{display:flex;align-items:center;gap:8px}
 .status__text{font-size:12px;color:var(--muted)}
-.dot{width:10px;height:10px;border-radius:999px;background:#888}.dot--on{background:#22c55e}.dot--off{background:#ef4444}
+.dot{width:10px;height:10px;border-radius:999px;background:#888}
+.dot--on{background:#22c55e}
+.dot--off{background:#ef4444}
 .role-badge{margin-left:8px;background:var(--gold);color:#111;padding:3px 8px;border-radius:999px;font-weight:800;font-size:12px}
 
 .app__footer{margin-top:auto;padding:16px;text-align:center;color:var(--muted)}
 
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:16px;
+  box-shadow:0 4px 20px rgba(0,0,0,.25)
+}
 .card--stretch{display:flex;flex-direction:column}
 .card--muted{opacity:.95;filter:saturate(.95)}
 .card__header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
@@ -42,74 +61,96 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 
 .section-title{font-weight:800;font-size:clamp(18px,4vw,20px);line-height:1.2}
 
+/* ===== Form & bottoni ===== */
 .label{font-size:14px;color:var(--muted);margin-bottom:6px;display:block}
 .input{width:100%;background:transparent;border:1px solid var(--border);padding:10px 12px;border-radius:10px;color:var(--text)}
 .input--sm{max-width:90px}
+
 .row{display:flex;gap:10px}
 .flex-1{flex:1}
 .align-center{align-items:center}
 .mt-8{margin-top:8px}.mt-12{margin-top:12px}.w-100{width:100%}
 
-.btn{border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;background:#1a3b5c;color:var(--text);transition:transform .06s ease,opacity .2s}
+.btn{
+  border:none;border-radius:10px;padding:10px 14px;font-weight:600;
+  cursor:pointer;background:#1a3b5c;color:var(--text);
+  transition:transform .06s ease,opacity .2s
+}
 .btn:active{transform:translateY(1px)}
 .btn--primary{background:var(--primary)}
 .btn--success{background:#0ea5e9} /* blu acqua per call */
 .btn--danger{background:var(--danger)}
 .btn--indigo{background:var(--indigo)}
 
-.muted{color:var(--muted)}
-.list{margin:0;padding:0;list-style:none}
-.list__row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px dashed var(--border);border-radius:12px}
-.chip{display:flex;align-items:center;gap:8px}
-.badge{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:2px 8px;border-radius:999px;background:#173f65}
-.badge--offer{background:#1d9b4f;color:#0b0d12}
-
-/* Evidenza “ha offerto” in Lobby: SOLO bordo blu, nessun sfondo */
-.list__row--bid{background:transparent;border:2px solid rgba(59,130,246,.85)}
-
-/* Evidenza vincitore in Lobby: bordo+sfondo verde */
-.list__row--win{border:2px solid #16a34a;background:rgba(22,163,74,.15)}
-
-/* Banner giocatore */
+/* ===== Auction banner ===== */
 .auction__header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
 .auction__title{font-weight:700}
 .auction__controls{display:flex;align-items:center;gap:8px}
-.called-banner{border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:10px;background:rgba(20,37,61,.6)}
+
+.called-banner{
+  border:1px solid var(--border);border-radius:16px;
+  padding:14px 16px;display:flex;align-items:center;gap:10px;
+  background:rgba(20,37,61,.6)
+}
 .called-banner--idle{background:rgba(9,25,41,.6)}
 .called-banner--active{background:linear-gradient(90deg, rgba(43,108,176,.32), rgba(43,108,176,.08));border-color:#2b6cb0}
 .called-banner__label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .called-banner__name{font-weight:800;font-size:clamp(22px, 5vw, 34px);line-height:1.15}
 
-/* Countdown */
+/* ===== Countdown ===== */
 .progress{position:relative;height:10px;border-radius:999px;background:#0c2742;overflow:hidden}
 .progress__bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--primary),var(--primary-2));transition:width .2s ease}
 .progress__bar--warn{background:linear-gradient(90deg,#eab308,#f59e0b)}
 .timer{margin-top:6px;font-variant-numeric:tabular-nums;font-weight:700}
 
-/* Pills */
+/* ===== Pills (quick add) ===== */
 .pills{display:flex;gap:8px;flex-wrap:wrap}
 .pill{padding:8px 12px;border-radius:999px;background:#0f2b49;color:var(--text);border:1px solid var(--border);cursor:pointer}
 .pill--ghost{background:transparent}
 
-/* Ranking (ultimo risultato) */
+/* ===== Riepilogo offerte ===== */
 .ranking{margin:0;padding:0;list-style:none}
-.ranking__row{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.02)}
+.ranking__row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;
+  background:rgba(255,255,255,0.02)
+}
 /* Vincitore nel riepilogo: bordo + sfondo verde */
-.ranking__row--win{border:2px solid #16a34a;background:rgba(22,163,74,.15)}
+.ranking__row--win{border:2px solid var(--success);background:rgba(22,163,74,.15)}
 .ranking__name{font-weight:600}
 .ranking__amount{font-weight:700}
 
-/* Toast */
-.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:50}
+/* ===== Lobby (−2pt + leggibilità) ===== */
+.lobby{font-size:13px} /* −2pt rispetto al 15px globale */
+.list{margin:0;padding:0;list-style:none}
+.list__row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 12px;border-bottom:1px dashed var(--border);border-radius:12px
+}
+.chip{display:flex;align-items:center;gap:8px}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:2px 8px;border-radius:999px;background:#173f65}
+.badge--offer{background:#1d9b4f;color:#0b0d12}
 
-/* Schermata login: bottone ADMIN in basso con riquadro variabile */
+/* Chi ha offerto in LOBBY: SOLO bordo blu, senza sfondo */
+.list__row--bid{background:transparent;border:2px solid rgba(59,130,246,.85)}
+
+/* Vincitore anche in LOBBY: bordo + sfondo verde */
+.list__row--win{border:2px solid var(--success);background:rgba(22,163,74,.15)}
+
+/* Micro-tuning leggibilità lobby */
+.lobby .list__row{padding:10px 14px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px}
+.lobby .chip__name{font-weight:600;letter-spacing:.01em}
+.lobby .badge{transform:translateY(-1px)}
+
+/* ===== Login: bottone ADMIN in basso ===== */
 .login__admin{margin-top:20px;border-top:1px solid var(--border);padding-top:16px}
 .admin-btn{padding:.75rem;border-radius:8px;font-weight:700;border:1px solid var(--border)}
 .admin-btn--active{background-color:#1e3a8a;color:#fff;cursor:pointer}
 .admin-btn--disabled{background-color:rgba(30,58,138,.5);color:#fff;cursor:not-allowed}
 
-/* Lobby: -2pt e migliore leggibilità */
-.lobby{font-size:13px}
-.lobby .list__row{padding:10px 14px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px}
-.lobby .chip__name{font-weight:600;letter-spacing:.01em}
-.lobby .badge{transform:translateY(-1px)}
+/* ===== Toast ===== */
+.toast{
+  position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+  background:var(--surface);border:1px solid var(--border);
+  padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:50
+}
