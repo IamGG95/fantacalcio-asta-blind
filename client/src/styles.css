@@ -16,3 +16,18 @@
 .pills{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:8px 12px;border-radius:999px;background:#202633;color:var(--text);border:1px solid var(--border);cursor:pointer}.pill--ghost{background:transparent}
 .ranking{margin:0;padding:0;list-style:none}.ranking__row{display:flex;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.02)}.ranking__row--win{outline:2px solid var(--success)}.ranking__name{font-weight:600}.ranking__amount{font-weight:700}
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:50}
+
+.card__sub{margin-top:20px}
+.card__subtitle{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.card--muted{opacity:.9;filter:saturate(.9)}
+
+.auction__header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
+.auction__title{font-weight:700}
+.auction__controls{display:flex;align-items:center;gap:8px}
+.input--sm{max-width:90px}
+
+.called-banner{border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:10px}
+.called-banner--idle{background:rgba(255,255,255,0.02)}
+.called-banner--active{background:linear-gradient(90deg, rgba(99,102,241,.18), rgba(99,102,241,.06));border-color:#4f46e5}
+.called-banner__label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.called-banner__name{font-weight:800;font-size:clamp(20px, 5vw, 36px);line-height:1.15}
