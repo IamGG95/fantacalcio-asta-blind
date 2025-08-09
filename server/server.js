@@ -18,7 +18,7 @@ let lobby = {
   players: [], // {id, name}
   adminId: null, // primo che entra
   inAuction: null, // {playerName, callerId, duration, endsAt, bids: {socketId: amount}}
-  settings: { duration: 10 }, // DEFAULT 10s
+  settings: { duration: 30 }, // DEFAULT 30s (aggiornato)
 };
 
 function sanitizePlayer(raw) {
@@ -30,7 +30,7 @@ io.on('connection', (socket) => {
   socket.emit('lobby:update', lobby.players.map(sanitizePlayer));
 
   socket.on('lobby:join', (payload = {}) => {
-    const name = payload.name ? String(payload.name) : `Giocatore-${socket.id.slice(0,4)}`;
+    const name = payload.name ? String(payload.name) : `Squadra-${socket.id.slice(0,4)}`;
 
     // rejoin safe
     lobby.players = lobby.players.filter(p => p.id !== socket.id);
@@ -65,7 +65,7 @@ io.on('connection', (socket) => {
     if (lobby.inAuction) return; // già in corso
 
     const playerName = payload.playerName ? String(payload.playerName) : 'Giocatore sconosciuto';
-    const duration = Number.isFinite(Number(payload.duration)) ? Math.max(1, Number(payload.duration)) : Number(lobby.settings.duration || 10);
+    const duration = Number.isFinite(Number(payload.duration)) ? Math.max(1, Number(payload.duration)) : Number(lobby.settings.duration || 30);
 
     const now = Date.now();
     const endsAt = now + duration * 1000;
