@@ -1,60 +1,96 @@
-:root{--bg:#0b0d12;--surface:#11151b;--muted:#9aa3ae;--text:#ecf2f8;--primary:#5b9cff;--success:#22c55e;--danger:#ef4444;--indigo:#6366f1;--gold:#fbbf24;--card:#0f1319;--border:#1f2937}
-@media (prefers-color-scheme: light){:root{--bg:#f6f7fb;--surface:#ffffff;--card:#ffffff;--text:#0b1220;--muted:#667084;--border:#e6e8ef}}
-*{box-sizing:border-box}html,body,#root{height:100%}body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue','Noto Sans',Arial}
+/* =============================
+   3) client/src/styles.css — PALETTE FISSA BLU MARE
+   ============================= */
+/* Palette blu mare statica (niente prefers-color-scheme) */
+:root{
+  --bg:#071a2c;          /* blu notte profondo */
+  --surface:#0b2239;     /* blu mare scuro */
+  --card:#0e2a47;        /* card */
+  --text:#e8f1fb;        /* testo chiaro */
+  --muted:#87a0c1;       /* testo secondario */
+  --border:#143251;      /* bordi */
+  --primary:#2b6cb0;     /* blu vivo */
+  --primary-2:#3b82f6;   /* blu accento */
+  --success:#16a34a;     /* verde per conferme */
+  --danger:#ef4444;      /* rosso per errori */
+  --indigo:#3b82f6;      /* pulsanti azzurri */
+  --gold:#fbbf24;        /* badge admin */
+}
+
+*{box-sizing:border-box}
+html,body,#root{height:100%}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue','Noto Sans',Arial}
+
 .app{min-height:100%;display:flex;flex-direction:column}
 .container{width:100%;max-width:1100px;margin-inline:auto;padding:16px}
-.grid{display:grid;grid-template-columns:1fr;gap:16px}@media(min-width:960px){.grid{grid-template-columns:2fr 2fr 1fr 1fr}}
-.app__header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
-.brand{font-weight:700}.status{display:flex;align-items:center;gap:8px}.status__text{font-size:12px;color:var(--muted)}.dot{width:10px;height:10px;border-radius:999px;background:#888}.dot--on{background:#22c55e}.dot--off{background:#ef4444}
-.app__footer{margin-top:auto;padding:16px;text-align:center;color:var(--muted)}
-.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.12)}.card--stretch{display:flex;flex-direction:column}.card__header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-.label{font-size:14px;color:var(--muted);margin-bottom:6px;display:block}.input{width:100%;background:transparent;border:1px solid var(--border);padding:10px 12px;border-radius:10px;color:var(--text)}.row{display:flex;gap:10px}.flex-1{flex:1}.mt-8{margin-top:8px}.mt-12{margin-top:12px}.w-100{width:100%}
-.btn{border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;background:#2a2f3a;color:var(--text);transition:transform .06s ease,opacity .2s}.btn:active{transform:translateY(1px)}.btn--primary{background:var(--primary)}.btn--success{background:var(--success)}.btn--danger{background:var(--danger)}.btn--indigo{background:var(--indigo)}
-.muted{color:var(--muted)}.list{margin:0;padding:0;list-style:none}.list__row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px dashed var(--border)}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,'Liberation Mono','Courier New',monospace}
-.chip{display:flex;align-items:center;gap:8px}.badge{background:#2e3442;color:var(--text);font-size:11px;padding:2px 6px;border-radius:999px}.badge--gold{background:var(--gold);color:#111}
-.progress{position:relative;height:10px;border-radius:999px;background:#1c2230;overflow:hidden}.progress__bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--primary),#8ab6ff);transition:width .2s ease}.progress__bar--warn{background:linear-gradient(90deg,var(--danger),#ff7b7b)}.timer{margin-top:6px;font-variant-numeric:tabular-nums;font-weight:700}
-.pills{display:flex;gap:8px;flex-wrap:wrap}.pill{padding:8px 12px;border-radius:999px;background:#202633;color:var(--text);border:1px solid var(--border);cursor:pointer}.pill--ghost{background:transparent}
-.ranking{margin:0;padding:0;list-style:none}.ranking__row{display:flex;justify-content:space-between;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.02)}.ranking__row--win{outline:2px solid var(--success)}.ranking__name{font-weight:600}.ranking__amount{font-weight:700}
-.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.25);z-index:50}
 
+.app__header{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--border)}
+.brand{font-weight:700}
+.status{display:flex;align-items:center;gap:8px}
+.status__text{font-size:12px;color:var(--muted)}
+.dot{width:10px;height:10px;border-radius:999px;background:#888}.dot--on{background:#22c55e}.dot--off{background:#ef4444}
+.role-badge{margin-left:8px;background:var(--gold);color:#111;padding:3px 8px;border-radius:999px;font-weight:800;font-size:12px}
+
+.app__footer{margin-top:auto;padding:16px;text-align:center;color:var(--muted)}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+.card--stretch{display:flex;flex-direction:column}
+.card--muted{opacity:.95;filter:saturate(.95)}
+.card__header{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
 .card__sub{margin-top:20px}
 .card__subtitle{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
-.card--muted{opacity:.9;filter:saturate(.9)}
 
+.section-title{font-weight:800;font-size:clamp(18px,4vw,20px);line-height:1.2}
+
+.label{font-size:14px;color:var(--muted);margin-bottom:6px;display:block}
+.input{width:100%;background:transparent;border:1px solid var(--border);padding:10px 12px;border-radius:10px;color:var(--text)}
+.input--sm{max-width:90px}
+.row{display:flex;gap:10px}
+.flex-1{flex:1}
+.align-center{align-items:center}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.w-100{width:100%}
+
+.btn{border:none;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer;background:#1a3b5c;color:var(--text);transition:transform .06s ease,opacity .2s}
+.btn:active{transform:translateY(1px)}
+.btn--primary{background:var(--primary)}
+.btn--success{background:#0ea5e9} /* blu acqua per call */
+.btn--danger{background:var(--danger)}
+.btn--indigo{background:var(--indigo)}
+
+.muted{color:var(--muted)}
+.list{margin:0;padding:0;list-style:none}
+.list__row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px dashed var(--border);border-radius:12px}
+.chip{display:flex;align-items:center;gap:8px}
+.badge{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:2px 8px;border-radius:999px;background:#173f65}
+.badge--offer{background:#1d9b4f;color:#0b0d12}
+.list__row--bid{background:linear-gradient(90deg, rgba(59,130,246,.20), rgba(59,130,246,.06)); border:1px solid rgba(59,130,246,.35)}
+
+/* Banner giocatore */
 .auction__header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:10px}
 .auction__title{font-weight:700}
 .auction__controls{display:flex;align-items:center;gap:8px}
-.input--sm{max-width:90px}
-
-.called-banner{border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:10px}
-.called-banner--idle{background:rgba(255,255,255,0.02)}
-.called-banner--active{background:linear-gradient(90deg, rgba(99,102,241,.18), rgba(99,102,241,.06));border-color:#4f46e5}
-.called-banner__label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.called-banner__name{font-weight:800;font-size:clamp(20px, 5vw, 36px);line-height:1.15}
-
-/* titoli uniformi */
-.section-title{font-weight:800;font-size:clamp(18px,4vw,20px)}
-
-/* evidenza chi ha offerto nella lobby */
-.list__row--bid{background:linear-gradient(90deg, rgba(34,197,94,.15), rgba(34,197,94,.04)); border:1px solid rgba(34,197,94,.35); border-radius:12px}
-.badge--offer{background:#16a34a;color:#0b0d12}
-*/
-
-/* Migliora centraggi e proporzioni */
-.align-center{align-items:center}
-.list__row{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px dashed var(--border);border-radius:12px}
-.chip{display:flex;align-items:center;gap:8px}
-.badge{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:2px 8px;border-radius:999px}
-.badge--offer{background:#16a34a;color:#0b0d12}
-.list__row--bid{background:linear-gradient(90deg, rgba(34,197,94,.15), rgba(34,197,94,.04)); border:1px solid rgba(34,197,94,.35)}
-.role-badge{margin-left:8px;background:#fbbf24;color:#111;padding:3px 8px;border-radius:999px;font-weight:800;font-size:12px}
-
-/* Titoli coerenti */
-.section-title{font-weight:800;font-size:clamp(18px,4vw,20px);line-height:1.2}
-
-/* Banner giocatore */
-.called-banner{border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:10px}
-.called-banner--idle{background:rgba(255,255,255,0.02)}
-.called-banner--active{background:linear-gradient(90deg, rgba(99,102,241,.18), rgba(99,102,241,.06));border-color:#4f46e5}
+.called-banner{border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:10px;background:rgba(20,37,61,.6)}
+.called-banner--idle{background:rgba(9,25,41,.6)}
+.called-banner--active{background:linear-gradient(90deg, rgba(43,108,176,.32), rgba(43,108,176,.08));border-color:#2b6cb0}
 .called-banner__label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
 .called-banner__name{font-weight:800;font-size:clamp(22px, 5vw, 34px);line-height:1.15}
+
+/* Countdown */
+.progress{position:relative;height:10px;border-radius:999px;background:#0c2742;overflow:hidden}
+.progress__bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--primary),var(--primary-2));transition:width .2s ease}
+.progress__bar--warn{background:linear-gradient(90deg,#eab308,#f59e0b)}
+.timer{margin-top:6px;font-variant-numeric:tabular-nums;font-weight:700}
+
+/* Pills */
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{padding:8px 12px;border-radius:999px;background:#0f2b49;color:var(--text);border:1px solid var(--border);cursor:pointer}
+.pill--ghost{background:transparent}
+
+/* Ranking */
+.ranking{margin:0;padding:0;list-style:none}
+.ranking__row{display:flex;justify-content:space-between;align-items:center;padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:rgba(255,255,255,0.02)}
+.ranking__row--win{outline:2px solid var(--primary-2)}
+.ranking__name{font-weight:600}.ranking__amount{font-weight:700}
+
+/* Toast */
+.toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:50}
