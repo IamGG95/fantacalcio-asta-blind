@@ -1,7 +1,6 @@
-/* =============================
-   3) client/src/styles.css — PALETTE FISSA BLU MARE
-   ============================= */
-/* Palette blu mare statica (niente prefers-color-scheme) */
+/* =====================================
+   File: client/src/styles.css
+   ===================================== */
 :root{
   --bg:#071a2c;          /* blu notte profondo */
   --surface:#0b2239;     /* blu mare scuro */
@@ -11,8 +10,8 @@
   --border:#143251;      /* bordi */
   --primary:#2b6cb0;     /* blu vivo */
   --primary-2:#3b82f6;   /* blu accento */
-  --success:#16a34a;     /* verde per conferme */
-  --danger:#ef4444;      /* rosso per errori */
+  --success:#16a34a;     /* verde */
+  --danger:#ef4444;      /* rosso */
   --indigo:#3b82f6;      /* pulsanti azzurri */
   --gold:#fbbf24;        /* badge admin */
 }
@@ -95,29 +94,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 /* Toast */
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:50}
 
-/* Nessuna modifica strutturale; aggiunte per bottone admin in basso */
+/* Schermata login: bottone ADMIN in basso con riquadro variabile */
 .login__admin{margin-top:20px;border-top:1px solid var(--border);padding-top:16px}
-.btn--subtle{background:#0f2b49; opacity:.9}
-.btn[disabled]{opacity:.6;cursor:not-allowed}
-
-.login__admin {
-  margin-top: 20px;
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
-}
-.admin-btn {
-  padding: 0.75rem;
-  border-radius: 8px;
-  font-weight: bold;
-  border: none;
-}
-.admin-btn--active {
-  background-color: #1e3a8a; /* blu come Entra */
-  color: white;
-  cursor: pointer;
-}
-.admin-btn--disabled {
-  background-color: rgba(30, 58, 138, 0.5); /* blu trasparente */
-  color: white;
-  cursor: not-allowed;
-}
+.admin-btn{padding:.75rem;border-radius:8px;font-weight:700;border:1px solid var(--border)}
+.admin-btn--active{background-color:#1e3a8a;color:#fff;cursor:pointer}
+.admin-btn--disabled{background-color:rgba(30,58,138,.5);color:#fff;cursor:not-allowed}
