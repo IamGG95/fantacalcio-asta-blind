@@ -17,7 +17,7 @@ export default function App() {
   const [name, setName] = useState('');
   const [joined, setJoined] = useState(false);
   const [players, setPlayers] = useState([]);
-  const [settings, setSettings] = useState({ duration: 10 }); // DEFAULT 10s
+  const [settings, setSettings] = useState({ duration: 30 }); // DEFAULT 30s (aggiornato)
 
   const [callPlayerName, setCallPlayerName] = useState('');
   const [auction, setAuction] = useState(null); // {playerName, duration, endsAt}
@@ -47,11 +47,11 @@ export default function App() {
     s.on('disconnect', () => { setConnected(false); setCurrentSocketId(null); });
 
     s.on('lobby:update', (pls) => setPlayers(sanitizePlayers(pls)));
-    s.on('settings:update', (newSettings) => setSettings({ duration: Number(newSettings && newSettings.duration) || 10 }));
+    s.on('settings:update', (newSettings) => setSettings({ duration: Number(newSettings && newSettings.duration) || 30 }));
 
     s.on('auction:start', (a) => {
       const playerName = a && a.playerName ? String(a.playerName) : 'Giocatore sconosciuto';
-      const duration = a && Number.isFinite(Number(a.duration)) ? Number(a.duration) : settings.duration || 10;
+      const duration = a && Number.isFinite(Number(a.duration)) ? Number(a.duration) : settings.duration || 30;
       const endsAt = a && Number.isFinite(Number(a.endsAt)) ? Number(a.endsAt) : Date.now() + duration * 1000;
       const auctionObj = { playerName, duration, endsAt };
 
@@ -105,7 +105,7 @@ export default function App() {
   }, []);
 
   function joinLobby() {
-    if (!name) return alert('Inserisci un nickname');
+    if (!name) return alert('Inserisci il nome della squadra');
     if (!socketRef.current || !socketRef.current.connected) return alert('Socket non connesso');
     socketRef.current.emit('lobby:join', { name });
     setJoined(true);
@@ -131,7 +131,7 @@ export default function App() {
     if (!amIAdmin) return alert('Solo l\'admin può chiamare un giocatore');
     if (!callPlayerName) return alert('Inserisci il nome del giocatore');
     if (!socketRef.current || !socketRef.current.connected) return alert('Socket non connesso');
-    const durationToUse = settings && Number.isFinite(Number(settings.duration)) ? Number(settings.duration) : 10;
+    const durationToUse = settings && Number.isFinite(Number(settings.duration)) ? Number(settings.duration) : 30;
     socketRef.current.emit('auction:call', { playerName: callPlayerName, duration: durationToUse });
     setCallPlayerName('');
   }
@@ -170,8 +170,8 @@ export default function App() {
         <main className="container">
           <section className="card">
             <h2 className="section-title">Entra nella lobby</h2>
-            <label className="label" htmlFor="nickname">Nickname</label>
-            <input id="nickname" className="input" placeholder="Es. Gabriele" value={name} onChange={e => setName(e.target.value)} />
+            <label className="label" htmlFor="nickname">NOME SQUADRA</label>
+            <input id="nickname" className="input" placeholder="NOME SQUADRA" value={name} onChange={e => setName(e.target.value)} />
             <button className="btn btn--primary w-100 mt-12" onClick={joinLobby}>Entra</button>
             <p className="muted mt-8">Socket: {connected ? 'Connesso' : 'Non connesso'}</p>
           </section>
