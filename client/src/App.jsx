@@ -121,7 +121,30 @@ export default function App() {
     socketRef.current.emit('admin:claim');
     setJoined(true);
     setIsAdmin(true);
-  }
+}
+
+{!joined ? (
+    <main className="container">
+      <section className="card">
+        <h2 className="section-title">Entra</h2>
+        {/* Accesso partecipante (con nome squadra) */}
+        <label className="label" htmlFor="nickname">NOME SQUADRA</label>
+        <input id="nickname" className="input" placeholder="NOME SQUADRA" value={name} onChange={e => setName(e.target.value)} />
+        <button className="btn btn--primary w-100 mt-12" onClick={joinAsParticipant}>Entra</button>
+
+        {/* Bottone ADMIN in basso, discreto */}
+        <div className="login__admin">
+          <button
+            className={`btn w-100 admin-btn ${adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'admin-btn--disabled' : 'admin-btn--active'}`}
+            onClick={joinAsAdmin}
+            disabled={!!adminId && adminId !== (socketRef.current && socketRef.current.id)}
+          >
+            {adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'Admin già presente' : 'Accedi come ADMIN'}
+          </button>
+        </div>
+      </section>
+    </main>
+) : (
 
   function leaveLobby() {
     if (socketRef.current && socketRef.current.connected) {
