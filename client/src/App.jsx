@@ -33,6 +33,7 @@ export default function App() {
   const [lastResultPlayer, setLastResultPlayer] = useState('');
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [adminId, setAdminId] = useState(null);
+  const [tieBanner, setTieBanner] = useState(false); // <--- nuovo: banner pareggio
 
   function sanitizePlayers(rawPlayers) {
     if (!Array.isArray(rawPlayers)) return [];
@@ -97,6 +98,7 @@ export default function App() {
       setWinner(null);
       setBidderIds(new Set());
       setLastResultPlayer('');
+      setTieBanner(false); // reset banner pareggio
       showToast(`Asta avviata: ${playerName}`);
     });
 
@@ -140,19 +142,25 @@ export default function App() {
               }
             : null;
         const resultPlayer = payload && payload.playerName ? String(payload.playerName) : '';
+        const isTie = !!(payload && payload.tie);
 
         setOffers(sanitizedOffers);
-        setWinner(sanitizedWinner);
+        setWinner(isTie ? null : sanitizedWinner); // se pareggio, nessun vincitore
         setLastResultPlayer(resultPlayer);
         setAuction(null);
         setTimeLeft(0);
         setBidderIds(new Set());
+        setTieBanner(isTie); // mostra banner se pareggio
 
-        showToast(
-          sanitizedWinner
-            ? `Aggiudicatario: ${sanitizedWinner.name} (${sanitizedWinner.amount} crediti)`
-            : 'Nessuna offerta inviata'
-        );
+        if (isTie) {
+          showToast('Pareggio sulle offerte massime.');
+        } else {
+          showToast(
+            sanitizedWinner
+              ? `Aggiudicatario: ${sanitizedWinner.name} (${sanitizedWinner.amount} crediti)`
+              : 'Nessuna offerta inviata'
+          );
+        }
       } catch (err) {
         console.error('Error processing auction:end', err);
       }
@@ -382,6 +390,14 @@ export default function App() {
               <div className="card__subtitle">
                 Ultimo risultato {lastResultPlayer ? `— ${lastResultPlayer}` : ''}
               </div>
+
+              {/* Banner di pareggio */}
+              {tieBanner && (
+                <div className="banner banner--error">
+                  RIPETERE L'ASTA, QUOTAZIONI VINCENTI IDENTICHE!
+                </div>
+              )}
+
               {offers && offers.length ? (
                 <ol className="ranking">
                   {offers.map((o, idx) => (
@@ -408,7 +424,7 @@ export default function App() {
             <ul className="list">
               {lobbyList.map((p) => {
                 const hasBid = auction && bidderIds.has(p.id);
-                const isWinner = !!(winner && winner.socketId === p.id); // highlight vincitore
+                const isWinner = !!(winner && winner.socketId === p.id); // highlight vincitore se esiste
                 return (
                   <li
                     key={p.id}
@@ -446,4 +462,5 @@ export default function App() {
     </div>
   );
 }
+
 
