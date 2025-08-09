@@ -28,6 +28,37 @@ function broadcastAdmin() {
   io.emit('admin:update', { adminId: lobby.adminId });
 }
 
+function computeAuctionResult(auction) {
+  const offers = Object.entries(auction.bids || {})
+    .map(([socketId, amount]) => {
+      const player = lobby.players.find((p) => p.id === socketId);
+      return {
+        socketId: String(socketId),
+        name: player ? String(player.name) : 'sconosciuto',
+        amount: Number(amount) || 0,
+      };
+    })
+    .sort((a, b) => b.amount - a.amount);
+
+  // Determinazione vincitore o pareggio
+  let winner = null;
+  let tie = false;
+
+  if (offers.length >= 2) {
+    const topAmount = offers[0].amount;
+    const tiedTop = offers.filter((o) => o.amount === topAmount);
+    if (tiedTop.length > 1) {
+      tie = true; // pareggio sul massimo
+    } else {
+      winner = offers[0];
+    }
+  } else if (offers.length === 1) {
+    winner = offers[0];
+  }
+
+  return { offers, winner, tie };
+}
+
 io.on('connection', (socket) => {
   // Sync orario immediato
   socket.emit('time:pong', { serverNow: Date.now() });
@@ -116,33 +147,7 @@ io.on('connection', (socket) => {
       const auction = lobby.inAuction;
       if (!auction) return;
 
-      const offers = Object.entries(auction.bids)
-        .map(([socketId, amount]) => {
-          const player = lobby.players.find((p) => p.id === socketId);
-          return {
-            socketId: String(socketId),
-            name: player ? String(player.name) : 'sconosciuto',
-            amount: Number(amount) || 0,
-          };
-        })
-        .sort((a, b) => b.amount - a.amount);
-
-      // Determinazione vincitore o pareggio
-      let winner = null;
-      let tie = false;
-
-      if (offers.length >= 2) {
-        const topAmount = offers[0].amount;
-        const tiedTop = offers.filter(o => o.amount === topAmount);
-        if (tiedTop.length > 1) {
-          tie = true; // pareggio sul massimo
-        } else {
-          winner = offers[0];
-        }
-      } else if (offers.length === 1) {
-        winner = offers[0];
-      }
-      // se offers.length === 0 => nessun vincitore, tie=false
+      const { offers, winner, tie } = computeAuctionResult(auction);
 
       io.emit('auction:end', {
         playerName: String(auction.playerName),
@@ -150,12 +155,33 @@ io.on('connection', (socket) => {
         winner: winner
           ? { socketId: winner.socketId, name: winner.name, amount: winner.amount }
           : null,
-        tie, // <--- nuovo flag per indicare il pareggio
+        tie,
       });
 
       if (lobby.inAuction && lobby.inAuction.tickTimer) clearInterval(lobby.inAuction.tickTimer);
       lobby.inAuction = null;
     }, Math.max(0, durationMs) + 250);
+  });
+
+  // Interrompi anticipatamente l'asta (solo ADMIN)
+  socket.on('auction:stop', () => {
+    if (socket.id !== lobby.adminId) return;
+    if (!lobby.inAuction) return;
+
+    const auction = lobby.inAuction;
+    const { offers, winner, tie } = computeAuctionResult(auction);
+
+    io.emit('auction:end', {
+      playerName: String(auction.playerName),
+      offers,
+      winner: winner
+        ? { socketId: winner.socketId, name: winner.name, amount: winner.amount }
+        : null,
+      tie,
+    });
+
+    if (lobby.inAuction && lobby.inAuction.tickTimer) clearInterval(lobby.inAuction.tickTimer);
+    lobby.inAuction = null;
   });
 
   // Offerte (vietato all'admin)
