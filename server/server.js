@@ -127,7 +127,22 @@ io.on('connection', (socket) => {
         })
         .sort((a, b) => b.amount - a.amount);
 
-      const winner = offers.length ? offers[0] : null;
+      // Determinazione vincitore o pareggio
+      let winner = null;
+      let tie = false;
+
+      if (offers.length >= 2) {
+        const topAmount = offers[0].amount;
+        const tiedTop = offers.filter(o => o.amount === topAmount);
+        if (tiedTop.length > 1) {
+          tie = true; // pareggio sul massimo
+        } else {
+          winner = offers[0];
+        }
+      } else if (offers.length === 1) {
+        winner = offers[0];
+      }
+      // se offers.length === 0 => nessun vincitore, tie=false
 
       io.emit('auction:end', {
         playerName: String(auction.playerName),
@@ -135,6 +150,7 @@ io.on('connection', (socket) => {
         winner: winner
           ? { socketId: winner.socketId, name: winner.name, amount: winner.amount }
           : null,
+        tie, // <--- nuovo flag per indicare il pareggio
       });
 
       if (lobby.inAuction && lobby.inAuction.tickTimer) clearInterval(lobby.inAuction.tickTimer);
@@ -165,3 +181,4 @@ io.on('connection', (socket) => {
 
 app.get('/', (req, res) => res.send('Fantacalcio Asta - Server attivo'));
 server.listen(PORT, () => console.log('Server listening on', PORT));
+
