@@ -34,6 +34,7 @@ export default function App() {
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [adminId, setAdminId] = useState(null);
   const [tieBanner, setTieBanner] = useState(false); // banner pareggio
+  const [stopping, setStopping] = useState(false);   // stato Stop in corso
 
   function sanitizePlayers(rawPlayers) {
     if (!Array.isArray(rawPlayers)) return [];
@@ -98,7 +99,8 @@ export default function App() {
       setWinner(null);
       setBidderIds(new Set());
       setLastResultPlayer('');
-      setTieBanner(false); // reset banner pareggio
+      setTieBanner(false);
+      setStopping(false);
       showToast(`Asta avviata: ${playerName}`);
     });
 
@@ -151,6 +153,7 @@ export default function App() {
         setTimeLeft(0);
         setBidderIds(new Set());
         setTieBanner(isTie);
+        setStopping(false);
 
         if (isTie) {
           showToast('Pareggio sulle offerte massime.');
@@ -163,6 +166,7 @@ export default function App() {
         }
       } catch (err) {
         console.error('Error processing auction:end', err);
+        setStopping(false);
       }
     });
 
@@ -183,7 +187,6 @@ export default function App() {
 
   function joinAsAdmin() {
     if (!socketRef.current || !socketRef.current.connected) return alert('Socket non connesso');
-    // L'admin NON ha nome squadra e NON entra in lobby
     socketRef.current.emit('admin:claim');
     setJoined(true);
     setIsAdmin(true);
@@ -203,8 +206,13 @@ export default function App() {
     if (!socketRef.current || !socketRef.current.connected) return;
     const numeric = Number(newDuration);
     if (!Number.isFinite(numeric) || numeric < 1) return alert('Durata non valida');
-    socketRef.current.emit('settings:set', { duration: Math.round(numeric) });
-    showToast(`Countdown impostato a ${Math.round(numeric)}s`);
+    socketRef.current.emit('settings:set', { duration: Math.round(numeric) }, (res) => {
+      if (!res || !res.ok) {
+        showToast('Errore nell’aggiornare il countdown');
+        return;
+      }
+      showToast(`Countdown impostato a ${res.duration}s`);
+    });
   }
 
   // SOLO ADMIN può chiamare il giocatore
@@ -214,15 +222,35 @@ export default function App() {
     if (!socketRef.current || !socketRef.current.connected) return alert('Socket non connesso');
     const durationToUse =
       settings && Number.isFinite(Number(settings.duration)) ? Number(settings.duration) : 30;
-    socketRef.current.emit('auction:call', { playerName: callPlayerName, duration: durationToUse });
-    setCallPlayerName('');
+    socketRef.current.emit(
+      'auction:call',
+      { playerName: callPlayerName, duration: durationToUse },
+      (res) => {
+        if (!res || !res.ok) {
+          showToast('Impossibile avviare l’asta');
+          return;
+        }
+        setCallPlayerName('');
+      }
+    );
   }
 
-  // SOLO ADMIN: interrompi asta
+  // SOLO ADMIN: interrompi asta (con ACK)
   function stopAuction() {
     if (!isAdmin) return;
     if (!socketRef.current || !socketRef.current.connected) return;
-    socketRef.current.emit('auction:stop');
+    if (!auction) return;
+    setStopping(true);
+    socketRef.current.emit('auction:stop', null, (res) => {
+      if (!res || !res.ok) {
+        setStopping(false);
+        const reason = (res && res.reason) || 'errore';
+        showToast(`Stop non riuscito: ${reason}`);
+      } else {
+        showToast('Asta interrotta.');
+        // arriverà comunque auction:end dal server, che ripulirà lo stato
+      }
+    });
   }
 
   // Partecipanti: possono solo offrire
@@ -250,7 +278,6 @@ export default function App() {
     ? Math.max(0, Math.min(100, 100 - (timeLeft / (auction.duration || 1)) * 100))
     : 0;
 
-  // utile all'admin per capire se hanno offerto tutti
   const totalParticipants = lobbyList.length;
   const totalBidders = bidderIds.size;
   const allBid = auction && totalParticipants > 0 && totalBidders >= totalParticipants;
@@ -270,12 +297,10 @@ export default function App() {
         <main className="container">
           <section className="card">
             <h2 className="section-title">Entra</h2>
-            {/* Accesso partecipante (con nome squadra) */}
             <label className="label" htmlFor="nickname">NOME SQUADRA</label>
             <input id="nickname" className="input" placeholder="NOME SQUADRA" value={name} onChange={(e) => setName(e.target.value)} />
             <button className="btn btn--primary w-100 mt-12" onClick={joinAsParticipant}>Entra</button>
 
-            {/* Bottone ADMIN in basso, discreto */}
             <div className="login__admin">
               <button
                 className={`btn w-100 admin-btn ${adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'admin-btn--disabled' : 'admin-btn--active'}`}
@@ -306,8 +331,13 @@ export default function App() {
                       title="Modifica countdown (solo admin)"
                     />
                     {auction && (
-                      <button className="btn btn--danger" onClick={stopAuction} title="Interrompi subito l'asta">
-                        Interrompi
+                      <button
+                        className="btn btn--danger"
+                        onClick={stopAuction}
+                        disabled={stopping}
+                        title="Interrompi subito l'asta"
+                      >
+                        {stopping ? 'Interrompo…' : (allBid ? 'Interrompi (tutti hanno offerto)' : 'Interrompi')}
                       </button>
                     )}
                   </>
@@ -315,7 +345,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* piccolo promemoria per admin: quante offerte sono arrivate */}
             {isAdmin && auction && (
               <p className="muted" style={{ margin: '6px 0 0' }}>
                 Offerte ricevute: <strong>{totalBidders}</strong> / <strong>{totalParticipants}</strong>{' '}
@@ -329,7 +358,6 @@ export default function App() {
               <div className="called-banner__name">{auction ? auction.playerName : '— in attesa —'}</div>
             </div>
 
-            {/* ADMIN: input per chiamare; PARTECIPANTI: solo attesa */}
             {!auction && isAdmin && (
               <div className="row mt-12 align-center">
                 <input className="input flex-1" placeholder="Scrivi il nome del giocatore da chiamare" value={callPlayerName} onChange={(e) => setCallPlayerName(e.target.value)} />
@@ -338,7 +366,6 @@ export default function App() {
             )}
             {!auction && !isAdmin && <p className="muted mt-8">In attesa che l'admin chiami un giocatore…</p>}
 
-            {/* Se countdown attivo, mostra barra e input offerta (solo partecipanti) */}
             {auction && (
               <>
                 <div className="progress mt-12" aria-label="conto alla rovescia">
