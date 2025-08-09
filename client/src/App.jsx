@@ -1,6 +1,6 @@
-/* =============================
-   2) client/src/App.jsx
-   ============================= */
+/* =====================================
+   File: client/src/App.jsx
+   ===================================== */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import './styles.css';
@@ -37,6 +37,8 @@ export default function App() {
     if (!Array.isArray(rawPlayers)) return [];
     return rawPlayers.map(p => ({ id: String(p.id || ''), name: String(p.name || 'sconosciuto') }));
   }
+
+  const lobbyList = useMemo(() => players.filter(p => p.id !== adminId), [players, adminId]);
 
   useEffect(() => {
     const s = io(SOCKET_URL, { autoConnect: true });
@@ -121,30 +123,7 @@ export default function App() {
     socketRef.current.emit('admin:claim');
     setJoined(true);
     setIsAdmin(true);
-}
-
-{!joined ? (
-    <main className="container">
-      <section className="card">
-        <h2 className="section-title">Entra</h2>
-        {/* Accesso partecipante (con nome squadra) */}
-        <label className="label" htmlFor="nickname">NOME SQUADRA</label>
-        <input id="nickname" className="input" placeholder="NOME SQUADRA" value={name} onChange={e => setName(e.target.value)} />
-        <button className="btn btn--primary w-100 mt-12" onClick={joinAsParticipant}>Entra</button>
-
-        {/* Bottone ADMIN in basso, discreto */}
-        <div className="login__admin">
-          <button
-            className={`btn w-100 admin-btn ${adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'admin-btn--disabled' : 'admin-btn--active'}`}
-            onClick={joinAsAdmin}
-            disabled={!!adminId && adminId !== (socketRef.current && socketRef.current.id)}
-          >
-            {adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'Admin già presente' : 'Accedi come ADMIN'}
-          </button>
-        </div>
-      </section>
-    </main>
-) : (
+  }
 
   function leaveLobby() {
     if (socketRef.current && socketRef.current.connected) {
@@ -188,8 +167,7 @@ export default function App() {
   function quickAdd(n) { setMyBid(prev => String(Number(prev || 0) + n)); }
   function showToast(message) { setToast(message); window.clearTimeout(showToast._t); showToast._t = window.setTimeout(() => setToast(null), 2200); }
 
-  // visibilità
-  const lobbyList = players.filter(p => p.id !== adminId);
+  const progressPct = auction ? Math.max(0, Math.min(100, 100 - (timeLeft / (auction.duration || 1)) * 100)) : 0;
 
   return (
     <div className="app">
@@ -214,14 +192,12 @@ export default function App() {
             {/* Bottone ADMIN in basso, discreto */}
             <div className="login__admin">
               <button
-                className="btn btn--subtle w-100"
+                className={`btn w-100 admin-btn ${adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'admin-btn--disabled' : 'admin-btn--active'}`}
                 onClick={joinAsAdmin}
                 disabled={!!adminId && adminId !== (socketRef.current && socketRef.current.id)}
-                title={adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'Admin già presente' : 'Accedi come ADMIN'}
               >
                 {adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'Admin già presente' : 'Accedi come ADMIN'}
               </button>
-              <p className="muted mt-8">Il ruolo admin non richiede nome squadra.</p>
             </div>
           </section>
         </main>
@@ -267,7 +243,7 @@ export default function App() {
             {auction && (
               <>
                 <div className="progress mt-12" aria-label="conto alla rovescia">
-                  <div className={"progress__bar " + (timeLeft <= 3 ? 'progress__bar--warn' : '')} style={{ width: `${Math.max(0, Math.min(100, 100 - (timeLeft/(auction.duration||1))*100))}%` }} />
+                  <div className={"progress__bar " + (timeLeft <= 3 ? 'progress__bar--warn' : '')} style={{ width: `${progressPct}%` }} />
                 </div>
                 <div className="timer">{timeLeft}s</div>
 
@@ -316,7 +292,7 @@ export default function App() {
                   <li key={p.id} className={"list__row align-center " + (hasBid ? 'list__row--bid' : '')}>
                     <div className="chip">
                       <span className="chip__name">{p.name}</span>
-                      {p.id === (socketRef.current && socketRef.current.id) && !isAdmin && <span className="badge">tu</span>}
+                      {p.id === currentSocketId && !isAdmin && <span className="badge">tu</span>}
                       {hasBid && <span className="badge badge--offer">ha offerto</span>}
                     </div>
                   </li>
