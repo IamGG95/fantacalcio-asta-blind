@@ -121,7 +121,7 @@ body{
 .ranking__amount{font-weight:700}
 
 /* ===== Lobby (−2pt + leggibilità) ===== */
-.lobby{font-size:13px} /* −2pt rispetto al 15px globale */
+.lobby{font-size:11px} /* −4pt rispetto al 15px globale */
 .list{margin:0;padding:0;list-style:none}
 .list__row{
   display:flex;align-items:center;justify-content:space-between;
