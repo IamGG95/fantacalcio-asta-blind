@@ -1,11 +1,6 @@
-// client/src/App.jsx — Auction panel unificato + evidenza offerte + Lobby discreta in basso
-// Requisiti:
-// - Solo ADMIN (primo utente) può chiamare il giocatore e cambiare il countdown (default 10s)
-// - Puntata illimitata in crediti, nessun budget
-// - Offerte nascoste fino al reveal
-// - UI: sezione unica "Asta" con giocatore ben evidenziato; Lobby spostata in basso e più discreta
-// - NEW: evidenzia nella lobby chi ha già inviato un’offerta durante l’asta corrente
-
+/* =============================
+   2) client/src/App.jsx
+   ============================= */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
 import './styles.css';
@@ -34,13 +29,15 @@ export default function App() {
   const [winner, setWinner] = useState(null);
   const [toast, setToast] = useState(null);
   const [bidderIds, setBidderIds] = useState(() => new Set()); // socketIds che hanno offerto nell'asta corrente
+  const [lastResultPlayer, setLastResultPlayer] = useState('');
 
   function sanitizePlayers(rawPlayers) {
     if (!Array.isArray(rawPlayers)) return [];
     return rawPlayers.map(p => ({ id: String(p.id || ''), name: String(p.name || 'sconosciuto') }));
   }
 
-  const amIAdmin = useMemo(() => currentSocketId && players.length && players[0] && players[0].id === currentSocketId, [currentSocketId, players]);
+  const adminId = useMemo(() => (players[0] ? players[0].id : null), [players]);
+  const amIAdmin = useMemo(() => currentSocketId && adminId && adminId === currentSocketId, [currentSocketId, adminId]);
 
   useEffect(() => {
     const s = io(SOCKET_URL, { autoConnect: true });
@@ -61,7 +58,8 @@ export default function App() {
       setAuction(auctionObj);
       setOffers([]);
       setWinner(null);
-      setBidderIds(new Set()); // reset evidenze offerte
+      setBidderIds(new Set());
+      setLastResultPlayer('');
       showToast(`Asta avviata: ${playerName}`);
 
       const update = () => {
@@ -76,14 +74,9 @@ export default function App() {
 
     s.on('auction:bid:ack', ({ amount }) => { showToast(`Offerta inviata: ${amount} crediti`); });
 
-    // NEW: evidenza in lobby di chi ha appena inviato l'offerta
     s.on('auction:bid:mark', ({ socketId }) => {
       if (!socketId) return;
-      setBidderIds(prev => {
-        const next = new Set(prev);
-        next.add(String(socketId));
-        return next;
-      });
+      setBidderIds(prev => { const next = new Set(prev); next.add(String(socketId)); return next; });
     });
 
     s.on('auction:end', (payload) => {
@@ -94,9 +87,11 @@ export default function App() {
         const sanitizedWinner = payload && payload.winner
           ? { socketId: String(payload.winner.socketId || ''), name: String(payload.winner.name || ''), amount: Number(payload.winner.amount || 0) }
           : null;
+        const resultPlayer = payload && payload.playerName ? String(payload.playerName) : '';
 
         setOffers(sanitizedOffers);
         setWinner(sanitizedWinner);
+        setLastResultPlayer(resultPlayer);
         setAuction(null);
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         setTimeLeft(0);
@@ -121,6 +116,7 @@ export default function App() {
     setJoined(false);
   }
 
+  // SOLO ADMIN può cambiare countdown
   function setServerSettingsDuration(newDuration) {
     if (!amIAdmin) return alert('Solo l\'admin può modificare il countdown');
     if (!socketRef.current || !socketRef.current.connected) return;
@@ -130,6 +126,7 @@ export default function App() {
     showToast(`Countdown impostato a ${Math.round(numeric)}s`);
   }
 
+  // SOLO ADMIN può chiamare il giocatore
   function callPlayer() {
     if (!amIAdmin) return alert('Solo l\'admin può chiamare un giocatore');
     if (!callPlayerName) return alert('Inserisci il nome del giocatore');
@@ -139,11 +136,12 @@ export default function App() {
     setCallPlayerName('');
   }
 
+  // Partecipanti: possono solo offrire
   function sendBid() {
     if (!auction) return alert('Nessuna asta in corso');
+    if (amIAdmin) return alert('Gli admin non possono fare offerte');
     const numeric = Number(myBid);
     if (!Number.isFinite(numeric) || numeric < 0) return alert('Offerta non valida');
-    // evidenzia subito me stesso lato client (fallback, in attesa del mark del server)
     setBidderIds(prev => { const next = new Set(prev); if (currentSocketId) next.add(String(currentSocketId)); return next; });
     socketRef.current.emit('auction:bid', { amount: numeric });
   }
@@ -154,6 +152,9 @@ export default function App() {
   const totalDuration = auction ? auction.duration : settings.duration;
   const pct = auction ? Math.max(0, Math.min(100, Math.round(((totalDuration - timeLeft) / totalDuration) * 100))) : 0;
 
+  // Lista lobby senza mostrare l'admin
+  const lobbyList = players.filter(p => p.id !== adminId);
+
   return (
     <div className="app">
       <header className="app__header">
@@ -161,6 +162,7 @@ export default function App() {
         <div className="status">
           <span className={"dot " + (connected ? 'dot--on' : 'dot--off')} aria-label={connected ? 'connesso' : 'disconnesso'} />
           <span className="status__text">{connected ? 'Online' : 'Offline'}</span>
+          {amIAdmin && <span className="role-badge" title="Sei l'amministratore">ADMIN</span>}
         </div>
       </header>
 
@@ -169,7 +171,7 @@ export default function App() {
           <section className="card">
             <h2 className="section-title">Entra nella lobby</h2>
             <label className="label" htmlFor="nickname">Nickname</label>
-            <input id="nickname" className="input" placeholder="NOME SQUADRA" value={name} onChange={e => setName(e.target.value)} />
+            <input id="nickname" className="input" placeholder="Es. Gabriele" value={name} onChange={e => setName(e.target.value)} />
             <button className="btn btn--primary w-100 mt-12" onClick={joinLobby}>Entra</button>
             <p className="muted mt-8">Socket: {connected ? 'Connesso' : 'Non connesso'}</p>
           </section>
@@ -201,15 +203,10 @@ export default function App() {
               <div className="called-banner__name">{auction ? auction.playerName : '— in attesa —'}</div>
             </div>
 
-            {/* RIGA input admin per chiamare quando NON c'è un'asta */}
+            {/* ADMIN: input per chiamare; PARTECIPANTI: solo attesa */}
             {!auction && amIAdmin && (
-              <div className="row mt-12">
-                <input
-                  className="input flex-1"
-                  placeholder="Scrivi il nome del giocatore da chiamare"
-                  value={callPlayerName}
-                  onChange={(e) => setCallPlayerName(e.target.value)}
-                />
+              <div className="row mt-12 align-center">
+                <input className="input flex-1" placeholder="Scrivi il nome del giocatore da chiamare" value={callPlayerName} onChange={(e) => setCallPlayerName(e.target.value)} />
                 <button className="btn btn--success" onClick={callPlayer}>Chiama</button>
               </div>
             )}
@@ -217,7 +214,7 @@ export default function App() {
               <p className="muted mt-8">In attesa che l'admin chiami un giocatore…</p>
             )}
 
-            {/* Se countdown attivo, mostra barra e input offerta */}
+            {/* Se countdown attivo, mostra barra e input offerta (solo partecipanti) */}
             {auction && (
               <>
                 <div className="progress mt-12" aria-label="conto alla rovescia">
@@ -225,27 +222,26 @@ export default function App() {
                 </div>
                 <div className="timer">{timeLeft}s</div>
 
-                <div className="row mt-12">
-                  <input
-                    className="input flex-1"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="Inserisci offerta (crediti)"
-                    value={myBid}
-                    onChange={e => setMyBid(e.target.value)}
-                  />
-                  <button className="btn btn--indigo" onClick={sendBid}>Invia</button>
-                </div>
-                <div className="pills mt-8">
-                  {[1,5,10,20].map(n => (<button key={n} className="pill" onClick={() => quickAdd(n)}>+{n}</button>))}
-                  <button className="pill pill--ghost" onClick={() => setMyBid('')}>Reset</button>
-                </div>
+                {!amIAdmin ? (
+                  <>
+                    <div className="row mt-12 align-center">
+                      <input className="input flex-1" inputMode="numeric" pattern="[0-9]*" placeholder="Inserisci offerta (crediti)" value={myBid} onChange={e => setMyBid(e.target.value)} />
+                      <button className="btn btn--indigo" onClick={sendBid}>Invia</button>
+                    </div>
+                    <div className="pills mt-8">
+                      {[1,5,10,20].map(n => (<button key={n} className="pill" onClick={() => quickAdd(n)}>+{n}</button>))}
+                      <button className="pill pill--ghost" onClick={() => setMyBid('')}>Reset</button>
+                    </div>
+                  </>
+                ) : (
+                  <p className="muted mt-8">Gli admin non possono inviare offerte.</p>
+                )}
               </>
             )}
 
-            {/* RIEPILOGO OFFERTE */}
+            {/* RIEPILOGO OFFERTE con nome del giocatore */}
             <div className="card__sub">
-              <div className="card__subtitle">Ultimo risultato</div>
+              <div className="card__subtitle">Ultimo risultato {lastResultPlayer ? `— ${lastResultPlayer}` : ''}</div>
               {offers && offers.length ? (
                 <ol className="ranking">
                   {offers.map((o, idx) => (
@@ -261,18 +257,17 @@ export default function App() {
             </div>
           </section>
 
-          {/* LOBBY compatta e in secondo piano */}
+          {/* LOBBY compatta e in secondo piano, senza mostrare l'admin */}
           <section className="card card--muted mt-12">
             <div className="card__header"><h2 className="section-title">Lista squadre in lobby</h2></div>
             <ul className="list">
-              {players.map(p => {
+              {lobbyList.map(p => {
                 const hasBid = auction && bidderIds.has(p.id);
                 return (
-                  <li key={p.id} className={"list__row " + (hasBid ? 'list__row--bid' : '')}>
+                  <li key={p.id} className={"list__row align-center " + (hasBid ? 'list__row--bid' : '')}>
                     <div className="chip">
                       <span className="chip__name">{p.name}</span>
-                      {p.id === currentSocketId && <span className="badge">tu</span>}
-                      {p.id === (players[0] && players[0].id) && <span className="badge badge--gold">admin</span>}
+                      {p.id === currentSocketId && !amIAdmin && <span className="badge">tu</span>}
                       {hasBid && <span className="badge badge--offer">ha offerto</span>}
                     </div>
                   </li>
