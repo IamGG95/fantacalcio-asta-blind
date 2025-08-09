@@ -33,7 +33,7 @@ export default function App() {
   const [lastResultPlayer, setLastResultPlayer] = useState('');
   const [serverOffsetMs, setServerOffsetMs] = useState(0);
   const [adminId, setAdminId] = useState(null);
-  const [tieBanner, setTieBanner] = useState(false); // <--- nuovo: banner pareggio
+  const [tieBanner, setTieBanner] = useState(false); // banner pareggio
 
   function sanitizePlayers(rawPlayers) {
     if (!Array.isArray(rawPlayers)) return [];
@@ -145,12 +145,12 @@ export default function App() {
         const isTie = !!(payload && payload.tie);
 
         setOffers(sanitizedOffers);
-        setWinner(isTie ? null : sanitizedWinner); // se pareggio, nessun vincitore
+        setWinner(isTie ? null : sanitizedWinner);
         setLastResultPlayer(resultPlayer);
         setAuction(null);
         setTimeLeft(0);
         setBidderIds(new Set());
-        setTieBanner(isTie); // mostra banner se pareggio
+        setTieBanner(isTie);
 
         if (isTie) {
           showToast('Pareggio sulle offerte massime.');
@@ -232,9 +232,7 @@ export default function App() {
     socketRef.current.emit('auction:bid', { amount: numeric });
   }
 
-  function quickAdd(n) {
-    setMyBid((prev) => String(Number(prev || 0) + n));
-  }
+  function quickAdd(n) { setMyBid((prev) => String(Number(prev || 0) + n)); }
   function showToast(message) {
     setToast(message);
     window.clearTimeout(showToast._t);
@@ -252,11 +250,7 @@ export default function App() {
         <div className="status">
           <span className={'dot ' + (connected ? 'dot--on' : 'dot--off')} aria-label={connected ? 'connesso' : 'disconnesso'} />
           <span className="status__text">{connected ? 'Online' : 'Offline'}</span>
-          {isAdmin && (
-            <span className="role-badge" title="Sei l'amministratore">
-              ADMIN
-            </span>
-          )}
+          {isAdmin && <span className="role-badge" title="Sei l'amministratore">ADMIN</span>}
         </div>
       </header>
 
@@ -265,34 +259,18 @@ export default function App() {
           <section className="card">
             <h2 className="section-title">Entra</h2>
             {/* Accesso partecipante (con nome squadra) */}
-            <label className="label" htmlFor="nickname">
-              NOME SQUADRA
-            </label>
-            <input
-              id="nickname"
-              className="input"
-              placeholder="NOME SQUADRA"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <button className="btn btn--primary w-100 mt-12" onClick={joinAsParticipant}>
-              Entra
-            </button>
+            <label className="label" htmlFor="nickname">NOME SQUADRA</label>
+            <input id="nickname" className="input" placeholder="NOME SQUADRA" value={name} onChange={(e) => setName(e.target.value)} />
+            <button className="btn btn--primary w-100 mt-12" onClick={joinAsParticipant}>Entra</button>
 
             {/* Bottone ADMIN in basso, discreto */}
             <div className="login__admin">
               <button
-                className={`btn w-100 admin-btn ${
-                  adminId && adminId !== (socketRef.current && socketRef.current.id)
-                    ? 'admin-btn--disabled'
-                    : 'admin-btn--active'
-                }`}
+                className={`btn w-100 admin-btn ${adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'admin-btn--disabled' : 'admin-btn--active'}`}
                 onClick={joinAsAdmin}
                 disabled={!!adminId && adminId !== (socketRef.current && socketRef.current.id)}
               >
-                {adminId && adminId !== (socketRef.current && socketRef.current.id)
-                  ? 'Admin già presente'
-                  : 'Accedi come ADMIN'}
+                {adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'Admin già presente' : 'Accedi come ADMIN'}
               </button>
             </div>
           </section>
@@ -302,11 +280,9 @@ export default function App() {
           {/* AUCTION PANEL UNIFICATO */}
           <section className="card card--stretch">
             <div className="auction__header">
-              <div className="auction__title section-title">Asta in corso</div>
+              <div className="auction__title section-title">ASTA IN CORSO</div>
               <div className="auction__controls">
-                <span className="muted">
-                  Countdown: <strong>{settings.duration}s</strong>
-                </span>
+                <span className="muted">Countdown: <strong>{settings.duration}s</strong></span>
                 {isAdmin && (
                   <input
                     className="input input--sm"
@@ -329,15 +305,8 @@ export default function App() {
             {/* ADMIN: input per chiamare; PARTECIPANTI: solo attesa */}
             {!auction && isAdmin && (
               <div className="row mt-12 align-center">
-                <input
-                  className="input flex-1"
-                  placeholder="Scrivi il nome del giocatore da chiamare"
-                  value={callPlayerName}
-                  onChange={(e) => setCallPlayerName(e.target.value)}
-                />
-                <button className="btn btn--success" onClick={callPlayer}>
-                  Chiama
-                </button>
+                <input className="input flex-1" placeholder="Scrivi il nome del giocatore da chiamare" value={callPlayerName} onChange={(e) => setCallPlayerName(e.target.value)} />
+                <button className="btn btn--success" onClick={callPlayer}>Chiama</button>
               </div>
             )}
             {!auction && !isAdmin && <p className="muted mt-8">In attesa che l'admin chiami un giocatore…</p>}
@@ -346,37 +315,19 @@ export default function App() {
             {auction && (
               <>
                 <div className="progress mt-12" aria-label="conto alla rovescia">
-                  <div
-                    className={'progress__bar ' + (timeLeft <= 3 ? 'progress__bar--warn' : '')}
-                    style={{ width: `${progressPct}%` }}
-                  />
+                  <div className={'progress__bar ' + (timeLeft <= 3 ? 'progress__bar--warn' : '')} style={{ width: `${progressPct}%` }} />
                 </div>
                 <div className="timer">{timeLeft}s</div>
 
                 {!isAdmin ? (
                   <>
                     <div className="row mt-12 align-center">
-                      <input
-                        className="input flex-1"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        placeholder="Inserisci offerta (crediti)"
-                        value={myBid}
-                        onChange={(e) => setMyBid(e.target.value)}
-                      />
-                      <button className="btn btn--indigo" onClick={sendBid}>
-                        Invia
-                      </button>
+                      <input className="input flex-1" inputMode="numeric" pattern="[0-9]*" placeholder="Inserisci offerta (crediti)" value={myBid} onChange={(e) => setMyBid(e.target.value)} />
+                      <button className="btn btn--indigo" onClick={sendBid}>Invia</button>
                     </div>
                     <div className="pills mt-8">
-                      {[1, 5, 10, 20].map((n) => (
-                        <button key={n} className="pill" onClick={() => quickAdd(n)}>
-                          +{n}
-                        </button>
-                      ))}
-                      <button className="pill pill--ghost" onClick={() => setMyBid('')}>
-                        Reset
-                      </button>
+                      {[1,5,10,20].map(n => (<button key={n} className="pill" onClick={() => quickAdd(n)}>+{n}</button>))}
+                      <button className="pill pill--ghost" onClick={() => setMyBid('')}>Reset</button>
                     </div>
                   </>
                 ) : (
@@ -387,9 +338,7 @@ export default function App() {
 
             {/* RIEPILOGO OFFERTE con nome del giocatore */}
             <div className="card__sub">
-              <div className="card__subtitle">
-                Ultimo risultato {lastResultPlayer ? `— ${lastResultPlayer}` : ''}
-              </div>
+              <div className="card__subtitle">Ultimo risultato {lastResultPlayer ? `— ${lastResultPlayer}` : ''}</div>
 
               {/* Banner di pareggio */}
               {tieBanner && (
@@ -401,10 +350,7 @@ export default function App() {
               {offers && offers.length ? (
                 <ol className="ranking">
                   {offers.map((o, idx) => (
-                    <li
-                      key={o.socketId || idx}
-                      className={'ranking__row ' + (winner && winner.socketId === o.socketId ? 'ranking__row--win' : '')}
-                    >
+                    <li key={o.socketId || idx} className={'ranking__row ' + (winner && winner.socketId === o.socketId ? 'ranking__row--win' : '')}>
                       <span className="ranking__name">{String(o.name)}</span>
                       <span className="ranking__amount">{String(o.amount)} crediti</span>
                     </li>
@@ -419,20 +365,14 @@ export default function App() {
           {/* LOBBY compatta e in secondo piano, senza mostrare l'admin */}
           <section className="card card--muted mt-12 lobby">
             <div className="card__header">
-              <h2 className="section-title">Lista squadre in lobby</h2>
+              <h2 className="section-title">PARTECIPANTI</h2>
             </div>
             <ul className="list">
               {lobbyList.map((p) => {
                 const hasBid = auction && bidderIds.has(p.id);
-                const isWinner = !!(winner && winner.socketId === p.id); // highlight vincitore se esiste
+                const isWinner = !!(winner && winner.socketId === p.id);
                 return (
-                  <li
-                    key={p.id}
-                    className={
-                      'list__row align-center ' +
-                      (isWinner ? 'list__row--win' : hasBid ? 'list__row--bid' : '')
-                    }
-                  >
+                  <li key={p.id} className={'list__row align-center ' + (isWinner ? 'list__row--win' : hasBid ? 'list__row--bid' : '')}>
                     <div className="chip">
                       <span className="chip__name">{p.name}</span>
                       {p.id === currentSocketId && !isAdmin && <span className="badge">tu</span>}
@@ -443,24 +383,14 @@ export default function App() {
               })}
             </ul>
             <div className="row mt-12">
-              <button className="btn btn--danger" onClick={leaveLobby}>
-                Esci
-              </button>
+              <button className="btn btn--danger" onClick={leaveLobby}>Esci</button>
             </div>
           </section>
         </main>
       )}
 
-      {toast && (
-        <div className="toast" role="status" aria-live="polite">
-          {toast}
-        </div>
-      )}
-      <footer className="app__footer">
-        <small>Made for friends ⚽︎</small>
-      </footer>
+      {toast && (<div className="toast" role="status" aria-live="polite">{toast}</div>)}
+      <footer className="app__footer"><small>Made for friends ⚽︎</small></footer>
     </div>
   );
 }
-
-
