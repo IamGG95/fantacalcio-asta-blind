@@ -16,42 +16,63 @@ const PORT = process.env.PORT || 3001;
 // Stato in-memory
 let lobby = {
   players: [], // {id, name}
-  adminId: null, // primo che entra
-  inAuction: null, // {playerName, callerId, duration, endsAt, bids: {socketId: amount}}
-  settings: { duration: 30 }, // DEFAULT 30s (aggiornato)
+  adminId: null, // impostato SOLO via admin:claim
+  inAuction: null, // {playerName, callerId, duration, endsAt, bids: {socketId: amount}, tickTimer}
+  settings: { duration: 30 }, // DEFAULT 30s
 };
 
 function sanitizePlayer(raw) {
   return { id: String(raw.id || ''), name: String(raw.name || 'sconosciuto') };
 }
 
+function broadcastAdmin() {
+  io.emit('admin:update', { adminId: lobby.adminId });
+}
+
 io.on('connection', (socket) => {
+  // Sync orario immediato
+  socket.emit('time:pong', { serverNow: Date.now() });
+
   socket.emit('settings:update', lobby.settings);
   socket.emit('lobby:update', lobby.players.map(sanitizePlayer));
+  broadcastAdmin();
+
+  // Ping/pong per offset
+  socket.on('time:ping', (payload = {}) => {
+    socket.emit('time:pong', { serverNow: Date.now(), echo: payload && payload.echo });
+  });
+
+  // Claim ruolo ADMIN tramite bottone
+  socket.on('admin:claim', () => {
+    if (lobby.adminId && lobby.adminId !== socket.id) {
+      socket.emit('admin:deny', { reason: 'Admin già assegnato' });
+      return;
+    }
+    lobby.adminId = socket.id;
+    broadcastAdmin();
+  });
 
   socket.on('lobby:join', (payload = {}) => {
     const name = payload.name ? String(payload.name) : `Squadra-${socket.id.slice(0,4)}`;
-
     // rejoin safe
     lobby.players = lobby.players.filter(p => p.id !== socket.id);
     lobby.players.push({ id: socket.id, name });
-
-    if (!lobby.adminId) lobby.adminId = socket.id; // primo è admin
-
     io.emit('lobby:update', lobby.players.map(sanitizePlayer));
     io.emit('settings:update', lobby.settings);
+    broadcastAdmin();
   });
 
   socket.on('lobby:leave', () => {
     lobby.players = lobby.players.filter(p => p.id !== socket.id);
     if (lobby.adminId === socket.id) {
-      lobby.adminId = lobby.players.length ? lobby.players[0].id : null;
+      lobby.adminId = null; // libero, potrà essere reclamato
     }
     io.emit('lobby:update', lobby.players.map(sanitizePlayer));
     io.emit('settings:update', lobby.settings);
+    broadcastAdmin();
   });
 
-  // Solo l'ADMIN può cambiare il countdown
+  // Solo ADMIN può cambiare il countdown
   socket.on('settings:set', (newSettings = {}) => {
     if (socket.id !== lobby.adminId) return; // blocco non-admin
     const duration = Number.isFinite(Number(newSettings.duration)) ? Math.max(1, Number(newSettings.duration)) : lobby.settings.duration;
@@ -59,7 +80,7 @@ io.on('connection', (socket) => {
     io.emit('settings:update', lobby.settings);
   });
 
-  // Solo l'ADMIN può chiamare il giocatore
+  // Solo ADMIN può chiamare il giocatore
   socket.on('auction:call', (payload = {}) => {
     if (socket.id !== lobby.adminId) return; // blocco non-admin
     if (lobby.inAuction) return; // già in corso
@@ -68,11 +89,18 @@ io.on('connection', (socket) => {
     const duration = Number.isFinite(Number(payload.duration)) ? Math.max(1, Number(payload.duration)) : Number(lobby.settings.duration || 30);
 
     const now = Date.now();
-    const endsAt = now + duration * 1000;
+    const endsAt = now + duration * 1000; // server-autoritative
 
-    lobby.inAuction = { playerName, callerId: socket.id, duration, endsAt, bids: {} };
+    // crea struttura asta
+    lobby.inAuction = { playerName, callerId: socket.id, duration, endsAt, bids: {}, tickTimer: null };
 
-    io.emit('auction:start', { playerName, duration, endsAt });
+    io.emit('auction:start', { playerName, duration, endsAt, serverNow: now });
+
+    // Tick server-autoritative per sincronizzare tutti (ogni 500ms)
+    lobby.inAuction.tickTimer = setInterval(() => {
+      if (!lobby.inAuction) return;
+      io.emit('auction:sync', { serverNow: Date.now(), endsAt: lobby.inAuction.endsAt });
+    }, 500);
 
     const durationMs = endsAt - Date.now();
     setTimeout(() => {
@@ -92,14 +120,17 @@ io.on('connection', (socket) => {
         winner: winner ? { socketId: winner.socketId, name: winner.name, amount: winner.amount } : null,
       });
 
+      if (lobby.inAuction && lobby.inAuction.tickTimer) {
+        clearInterval(lobby.inAuction.tickTimer);
+      }
       lobby.inAuction = null;
     }, Math.max(0, durationMs) + 250);
   });
 
+  // Offerte (vietato all'admin)
   socket.on('auction:bid', (payload = {}) => {
     if (!lobby.inAuction) return;
-    // blocca offerte dall'admin
-    if (socket.id === lobby.adminId) return;
+    if (socket.id === lobby.adminId) return; // admin non può offrire
     const numeric = Number.isFinite(Number(payload.amount)) ? Number(payload.amount) : NaN;
     if (isNaN(numeric) || numeric < 0) return; // numerico e non negativo
     lobby.inAuction.bids[socket.id] = numeric;
@@ -111,10 +142,11 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     lobby.players = lobby.players.filter(p => p.id !== socket.id);
     if (lobby.adminId === socket.id) {
-      lobby.adminId = lobby.players.length ? lobby.players[0].id : null;
+      lobby.adminId = null;
     }
     io.emit('lobby:update', lobby.players.map(sanitizePlayer));
     io.emit('settings:update', lobby.settings);
+    broadcastAdmin();
   });
 });
 
