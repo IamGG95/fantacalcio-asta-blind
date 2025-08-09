@@ -99,3 +99,25 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 .login__admin{margin-top:20px;border-top:1px solid var(--border);padding-top:16px}
 .btn--subtle{background:#0f2b49; opacity:.9}
 .btn[disabled]{opacity:.6;cursor:not-allowed}
+
+.login__admin {
+  margin-top: 20px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+.admin-btn {
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: bold;
+  border: none;
+}
+.admin-btn--active {
+  background-color: #1e3a8a; /* blu come Entra */
+  color: white;
+  cursor: pointer;
+}
+.admin-btn--disabled {
+  background-color: rgba(30, 58, 138, 0.5); /* blu trasparente */
+  color: white;
+  cursor: not-allowed;
+}
