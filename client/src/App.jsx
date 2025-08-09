@@ -337,7 +337,7 @@ export default function App() {
                         disabled={stopping}
                         title="Interrompi subito l'asta"
                       >
-                        {stopping ? 'Interrompo…' : (allBid ? 'Interrompi (tutti hanno offerto)' : 'Interrompi')}
+                        {stopping ? 'Interrompo…' : (allBid ? 'INTERROMPI' : 'INTERROMPI')}
                       </button>
                     )}
                   </>
