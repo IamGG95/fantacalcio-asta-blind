@@ -94,3 +94,8 @@ body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-appl
 
 /* Toast */
 .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:50}
+
+/* Nessuna modifica strutturale; aggiunte per bottone admin in basso */
+.login__admin{margin-top:20px;border-top:1px solid var(--border);padding-top:16px}
+.btn--subtle{background:#0f2b49; opacity:.9}
+.btn[disabled]{opacity:.6;cursor:not-allowed}
