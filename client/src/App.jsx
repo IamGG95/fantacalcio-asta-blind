@@ -1,7 +1,6 @@
-// client/src/App.jsx — UI rinnovata (mobile-first, progress bar countdown, pill buttons)
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import './styles.css'; // vedi in fondo al documento il contenuto del file
+import './styles.css';
 
 const SOCKET_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SOCKET_URL)
   ? import.meta.env.VITE_SOCKET_URL
@@ -15,7 +14,7 @@ export default function App() {
   const [name, setName] = useState('');
   const [joined, setJoined] = useState(false);
   const [players, setPlayers] = useState([]);
-  const [settings, setSettings] = useState({ duration: 30 });
+  const [settings, setSettings] = useState({ duration: 10 }); // DEFAULT 10s
 
   const [callPlayerName, setCallPlayerName] = useState('');
   const [auction, setAuction] = useState(null); // {playerName, duration, endsAt}
@@ -27,7 +26,6 @@ export default function App() {
   const [winner, setWinner] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Helpers
   function sanitizePlayers(rawPlayers) {
     if (!Array.isArray(rawPlayers)) return [];
     return rawPlayers.map(p => ({ id: String(p.id || ''), name: String(p.name || 'sconosciuto'), budget: Number.isFinite(Number(p.budget)) ? Number(p.budget) : 100 }));
@@ -44,13 +42,14 @@ export default function App() {
     s.on('disconnect', () => { setConnected(false); setCurrentSocketId(null); });
 
     s.on('lobby:update', (pls) => setPlayers(sanitizePlayers(pls)));
-    s.on('settings:update', (newSettings) => setSettings({ duration: Number(newSettings && newSettings.duration) || 30 }));
+    s.on('settings:update', (newSettings) => setSettings({ duration: Number(newSettings && newSettings.duration) || 10 }));
 
     s.on('auction:start', (a) => {
       const playerName = a && a.playerName ? String(a.playerName) : 'Giocatore sconosciuto';
-      const duration = a && Number.isFinite(Number(a.duration)) ? Number(a.duration) : settings.duration || 30;
+      const duration = a && Number.isFinite(Number(a.duration)) ? Number(a.duration) : settings.duration || 10;
       const endsAt = a && Number.isFinite(Number(a.endsAt)) ? Number(a.endsAt) : Date.now() + duration * 1000;
       const auctionObj = { playerName, duration, endsAt };
+
       setAuction(auctionObj);
       setOffers([]);
       setWinner(null);
@@ -66,9 +65,7 @@ export default function App() {
       timerRef.current = setInterval(update, 250);
     });
 
-    s.on('auction:bid:ack', ({ amount }) => {
-      showToast(`Offerta inviata: ${amount}`);
-    });
+    s.on('auction:bid:ack', ({ amount }) => { showToast(`Offerta inviata: ${amount} crediti`); });
 
     s.on('auction:end', (payload) => {
       try {
@@ -87,17 +84,11 @@ export default function App() {
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         setTimeLeft(0);
 
-        showToast(sanitizedWinner ? `Aggiudicatario: ${sanitizedWinner.name} (${sanitizedWinner.amount})` : 'Nessuna offerta inviata');
-      } catch (err) {
-        console.error('Error processing auction:end', err);
-      }
+        showToast(sanitizedWinner ? `Aggiudicatario: ${sanitizedWinner.name} (${sanitizedWinner.amount} crediti)` : 'Nessuna offerta inviata');
+      } catch (err) { console.error('Error processing auction:end', err); }
     });
 
-    return () => {
-      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-      s.off();
-      s.disconnect();
-    };
+    return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } s.off(); s.disconnect(); };
   }, []);
 
   function joinLobby() {
@@ -112,7 +103,9 @@ export default function App() {
     setJoined(false);
   }
 
+  // SOLO ADMIN può cambiare countdown lato client
   function setServerSettingsDuration(newDuration) {
+    if (!amIAdmin) return alert('Solo l\'admin può modificare il countdown');
     if (!socketRef.current || !socketRef.current.connected) return;
     const numeric = Number(newDuration);
     if (!Number.isFinite(numeric) || numeric < 1) return alert('Durata non valida');
@@ -120,30 +113,27 @@ export default function App() {
     showToast(`Countdown impostato a ${Math.round(numeric)}s`);
   }
 
+  // SOLO ADMIN può chiamare giocatore lato client
   function callPlayer() {
+    if (!amIAdmin) return alert('Solo l\'admin può chiamare un giocatore');
     if (!callPlayerName) return alert('Inserisci il nome del giocatore');
     if (!socketRef.current || !socketRef.current.connected) return alert('Socket non connesso');
-    const durationToUse = settings && Number.isFinite(Number(settings.duration)) ? Number(settings.duration) : 30;
+    const durationToUse = settings && Number.isFinite(Number(settings.duration)) ? Number(settings.duration) : 10;
     socketRef.current.emit('auction:call', { playerName: callPlayerName, duration: durationToUse });
     setCallPlayerName('');
   }
 
+  // Puntata illimitata: rimosso il controllo sul budget
   function sendBid() {
     if (!auction) return alert('Nessuna asta in corso');
     const numeric = Number(myBid);
-    if (!Number.isFinite(numeric)) return alert('Offerta non valida');
+    if (!Number.isFinite(numeric) || numeric < 0) return alert('Offerta non valida');
     if (!myInfo) return alert('Non sei riconosciuto nella lobby');
-    if (numeric > myInfo.budget) return alert('Offerta superiore al tuo budget');
     socketRef.current.emit('auction:bid', { amount: numeric });
   }
 
   function quickAdd(n) { setMyBid(prev => String(Number(prev || 0) + n)); }
-
-  function showToast(message) {
-    setToast(message);
-    window.clearTimeout(showToast._t);
-    showToast._t = window.setTimeout(() => setToast(null), 2200);
-  }
+  function showToast(message) { setToast(message); window.clearTimeout(showToast._t); showToast._t = window.setTimeout(() => setToast(null), 2200); }
 
   const totalDuration = auction ? auction.duration : settings.duration;
   const pct = auction ? Math.max(0, Math.min(100, Math.round(((totalDuration - timeLeft) / totalDuration) * 100))) : 0;
@@ -171,9 +161,7 @@ export default function App() {
       ) : (
         <main className="container grid">
           <section className="card card--stretch">
-            <div className="card__header">
-              <h2>Lobby</h2>
-            </div>
+            <div className="card__header"><h2>Lobby</h2></div>
             <ul className="list">
               {players.map(p => (
                 <li key={p.id} className="list__row">
@@ -182,7 +170,7 @@ export default function App() {
                     {p.id === currentSocketId && <span className="badge">tu</span>}
                     {p.id === (players[0] && players[0].id) && <span className="badge badge--gold">admin</span>}
                   </div>
-                  <div className="mono">€ {p.budget}</div>
+                  <div className="mono">{p.budget} crediti</div>
                 </li>
               ))}
             </ul>
@@ -193,26 +181,30 @@ export default function App() {
 
           <section className="card card--stretch">
             <div className="card__header"><h2>Chiamata giocatore</h2></div>
-            <div className="row">
-              <input className="input flex-1" placeholder="Es. Lautaro Martinez" value={callPlayerName} onChange={e => setCallPlayerName(e.target.value)} />
-              <button className="btn btn--success" onClick={callPlayer}>Chiama</button>
-            </div>
-            <p className="muted mt-8">Il server gestisce countdown e reveal offerte.</p>
-            <div className="mt-12">
-              <p className="muted">Countdown attuale: <strong>{settings.duration}s</strong></p>
-              {amIAdmin && (
+            {amIAdmin ? (
+              <>
+                <div className="row">
+                  <input className="input flex-1" placeholder="Es. Lautaro Martinez" value={callPlayerName} onChange={e => setCallPlayerName(e.target.value)} />
+                  <button className="btn btn--success" onClick={callPlayer}>Chiama</button>
+                </div>
+                <p className="muted mt-8">Countdown attuale: <strong>{settings.duration}s</strong></p>
                 <div className="row mt-8">
                   <input type="number" min="1" className="input" defaultValue={settings.duration} onBlur={(e) => setServerSettingsDuration(e.target.value)} />
                   <span className="muted">(solo admin)</span>
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              <>
+                <p className="muted">In attesa che l'admin chiami un giocatore…</p>
+                <p className="muted mt-8">Countdown attuale: <strong>{settings.duration}s</strong></p>
+              </>
+            )}
           </section>
 
           <section className="card">
             <div className="card__header"><h3>La tua scheda</h3></div>
             <div className="kv"><span>Nickname</span><strong>{name}</strong></div>
-            <div className="kv"><span>Budget</span><strong>€ {myInfo ? myInfo.budget : '—'}</strong></div>
+            <div className="kv"><span>Budget</span><strong>{myInfo ? myInfo.budget : '—'} crediti</strong></div>
           </section>
 
           <section className="card">
@@ -221,17 +213,15 @@ export default function App() {
               <>
                 <div className="kv"><span>Giocatore</span><strong>{String(auction.playerName)}</strong></div>
                 <div className="progress mt-8" aria-label="conto alla rovescia">
-                  <div className={"progress__bar " + (timeLeft <= 5 ? 'progress__bar--warn' : '')} style={{ width: `${pct}%` }} />
+                  <div className={"progress__bar " + (timeLeft <= 3 ? 'progress__bar--warn' : '')} style={{ width: `${pct}%` }} />
                 </div>
                 <div className="timer">{timeLeft}s</div>
                 <div className="row mt-12">
-                  <input className="input flex-1" inputMode="numeric" pattern="[0-9]*" placeholder="Inserisci offerta" value={myBid} onChange={e => setMyBid(e.target.value)} />
+                  <input className="input flex-1" inputMode="numeric" pattern="[0-9]*" placeholder=\"Inserisci offerta (crediti)\" value={myBid} onChange={e => setMyBid(e.target.value)} />
                   <button className="btn btn--indigo" onClick={sendBid}>Invia</button>
                 </div>
                 <div className="pills mt-8">
-                  {[1,5,10,20].map(n => (
-                    <button key={n} className="pill" onClick={() => quickAdd(n)}>+{n}</button>
-                  ))}
+                  {[1,5,10,20].map(n => (<button key={n} className="pill" onClick={() => quickAdd(n)}>+{n}</button>))}
                   <button className="pill pill--ghost" onClick={() => setMyBid('')}>Reset</button>
                 </div>
               </>
@@ -243,16 +233,14 @@ export default function App() {
           <section className="card">
             <div className="card__header"><h3>Ultimo risultato</h3></div>
             {offers && offers.length ? (
-              <>
-                <ol className="ranking">
-                  {offers.map((o, idx) => (
-                    <li key={o.socketId || idx} className={"ranking__row " + (winner && winner.socketId === o.socketId ? 'ranking__row--win' : '')}>
-                      <span className="ranking__name">{String(o.name)}</span>
-                      <span className="ranking__amount">€ {String(o.amount)}</span>
-                    </li>
-                  ))}
-                </ol>
-              </>
+              <ol className="ranking">
+                {offers.map((o, idx) => (
+                  <li key={o.socketId || idx} className={"ranking__row " + (winner && winner.socketId === o.socketId ? 'ranking__row--win' : '')}>
+                    <span className="ranking__name">{String(o.name)}</span>
+                    <span className="ranking__amount">{String(o.amount)} crediti</span>
+                  </li>
+                ))}
+              </ol>
             ) : (
               <p className="muted">Nessun risultato recente</p>
             )}
@@ -260,13 +248,8 @@ export default function App() {
         </main>
       )}
 
-      {toast && (
-        <div className="toast" role="status" aria-live="polite">{toast}</div>
-      )}
-
-      <footer className="app__footer">
-        <small>Made for friends ⚽︎</small>
-      </footer>
+      {toast && (<div className="toast" role="status" aria-live="polite">{toast}</div>)}
+      <footer className="app__footer"><small>Made for friends ⚽︎</small></footer>
     </div>
   );
 }
