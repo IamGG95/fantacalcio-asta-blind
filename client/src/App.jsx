@@ -116,16 +116,20 @@ export default function App() {
   }
 
   function joinAsAdmin() {
-    if (!name) return alert('Inserisci il nome della squadra');
     if (!socketRef.current || !socketRef.current.connected) return alert('Socket non connesso');
-    socketRef.current.emit('lobby:join', { name });
+    // L'admin NON ha nome squadra e NON entra in lobby
     socketRef.current.emit('admin:claim');
     setJoined(true);
+    setIsAdmin(true);
   }
 
   function leaveLobby() {
-    if (socketRef.current && socketRef.current.connected) socketRef.current.emit('lobby:leave');
-    setJoined(false); setIsAdmin(false);
+    if (socketRef.current && socketRef.current.connected) {
+      socketRef.current.emit('lobby:leave');
+    }
+    // Se ero admin, rilascio il ruolo semplicemente tornando alla home; il server azzera adminId su leave/disconnect
+    setJoined(false);
+    setIsAdmin(false);
   }
 
   // SOLO ADMIN può cambiare countdown
@@ -179,13 +183,23 @@ export default function App() {
         <main className="container">
           <section className="card">
             <h2 className="section-title">Entra</h2>
+            {/* Accesso partecipante (con nome squadra) */}
             <label className="label" htmlFor="nickname">NOME SQUADRA</label>
             <input id="nickname" className="input" placeholder="NOME SQUADRA" value={name} onChange={e => setName(e.target.value)} />
-            <div className="row mt-12">
-              <button className="btn btn--primary flex-1" onClick={joinAsParticipant}>Partecipante</button>
-              <button className="btn btn--success flex-1" onClick={joinAsAdmin}>ADMIN</button>
+            <button className="btn btn--primary w-100 mt-12" onClick={joinAsParticipant}>Entra</button>
+
+            {/* Bottone ADMIN in basso, discreto */}
+            <div className="login__admin">
+              <button
+                className="btn btn--subtle w-100"
+                onClick={joinAsAdmin}
+                disabled={!!adminId && adminId !== (socketRef.current && socketRef.current.id)}
+                title={adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'Admin già presente' : 'Accedi come ADMIN'}
+              >
+                {adminId && adminId !== (socketRef.current && socketRef.current.id) ? 'Admin già presente' : 'Accedi come ADMIN'}
+              </button>
+              <p className="muted mt-8">Il ruolo admin non richiede nome squadra.</p>
             </div>
-            <p className="muted mt-8">Scegli se entrare come partecipante o amministratore.</p>
           </section>
         </main>
       ) : (
