@@ -1,3 +1,6 @@
+/* =============================
+   1) server/server.js
+   ============================= */
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -12,18 +15,14 @@ const PORT = process.env.PORT || 3001;
 
 // Stato in-memory
 let lobby = {
-  players: [], // {id, name, budget}
+  players: [], // {id, name}
   adminId: null, // primo che entra
   inAuction: null, // {playerName, callerId, duration, endsAt, bids: {socketId: amount}}
   settings: { duration: 10 }, // DEFAULT 10s
 };
 
 function sanitizePlayer(raw) {
-  return {
-    id: String(raw.id || ''),
-    name: String(raw.name || 'sconosciuto'),
-    budget: Number.isFinite(Number(raw.budget)) ? Number(raw.budget) : 100,
-  };
+  return { id: String(raw.id || ''), name: String(raw.name || 'sconosciuto') };
 }
 
 io.on('connection', (socket) => {
@@ -32,10 +31,10 @@ io.on('connection', (socket) => {
 
   socket.on('lobby:join', (payload = {}) => {
     const name = payload.name ? String(payload.name) : `Giocatore-${socket.id.slice(0,4)}`;
-    const budget = Number.isFinite(Number(payload.budget)) ? Number(payload.budget) : 100;
 
+    // rejoin safe
     lobby.players = lobby.players.filter(p => p.id !== socket.id);
-    lobby.players.push({ id: socket.id, name, budget });
+    lobby.players.push({ id: socket.id, name });
 
     if (!lobby.adminId) lobby.adminId = socket.id; // primo è admin
 
@@ -87,18 +86,10 @@ io.on('connection', (socket) => {
 
       const winner = offers.length ? offers[0] : null;
 
-      // *** Nessun aggiornamento budget: puntata illimitata ***
-      // (Se in futuro vuoi riattivarlo, decommenta e gestisci limiti)
-      // if (winner) {
-      //   const p = lobby.players.find(pp => pp.id === winner.socketId);
-      //   if (p) p.budget = Math.max(0, Number(p.budget) - Number(winner.amount));
-      // }
-
       io.emit('auction:end', {
         playerName: String(auction.playerName),
         offers,
         winner: winner ? { socketId: winner.socketId, name: winner.name, amount: winner.amount } : null,
-        updatedPlayers: lobby.players.map(sanitizePlayer),
       });
 
       lobby.inAuction = null;
@@ -107,13 +98,14 @@ io.on('connection', (socket) => {
 
   socket.on('auction:bid', (payload = {}) => {
     if (!lobby.inAuction) return;
+    // blocca offerte dall'admin
+    if (socket.id === lobby.adminId) return;
     const numeric = Number.isFinite(Number(payload.amount)) ? Number(payload.amount) : NaN;
     if (isNaN(numeric) || numeric < 0) return; // numerico e non negativo
-    // *** NESSUN LIMITE DI BUDGET ***
     lobby.inAuction.bids[socket.id] = numeric;
     socket.emit('auction:bid:ack', { amount: numeric });
-    // NEW: notifica a tutti che questo socket ha offerto (senza rivelare l'importo)
-  io.emit('auction:bid:mark', { socketId: socket.id });
+    // Notifica a tutti che questo socket ha offerto (senza rivelare importo)
+    io.emit('auction:bid:mark', { socketId: socket.id });
   });
 
   socket.on('disconnect', () => {
