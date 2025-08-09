@@ -16,7 +16,7 @@
   --gold:#fbbf24;        /* badge admin */
 }
 
-/* ===== Base (font -1pt) ===== */
+/* ===== Base (font ancora -1pt: 14px globale) ===== */
 *{box-sizing:border-box}
 html,body,#root{height:100%}
 body{
@@ -24,7 +24,7 @@ body{
   background:var(--bg);
   color:var(--text);
   font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue","Noto Sans",Arial;
-  font-size:15px; /* −1pt globale */
+  font-size:14px; /* prima 15px → ora 14px */
 }
 
 /* ===== Layout e card ===== */
@@ -59,11 +59,12 @@ body{
 .card__sub{margin-top:20px}
 .card__subtitle{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
 
-.section-title{font-weight:800;font-size:clamp(18px,4vw,20px);line-height:1.2}
+/* Titoli sezioni (andranno in maiuscolo dai testi di App.jsx) */
+.section-title{font-weight:800;font-size:clamp(17px,4vw,19px);line-height:1.2}
 
 /* ===== Form & bottoni ===== */
-.label{font-size:14px;color:var(--muted);margin-bottom:6px;display:block}
-.input{width:100%;background:transparent;border:1px solid var(--border);padding:10px 12px;border-radius:10px;color:var(--text)}
+.label{font-size:13px;color:var(--muted);margin-bottom:6px;display:block}
+.input{width:100%;background:transparent;border:1px solid var(--border);padding:9px 12px;border-radius:10px;color:var(--text)}
 .input--sm{max-width:90px}
 
 .row{display:flex;gap:10px}
@@ -72,13 +73,13 @@ body{
 .mt-8{margin-top:8px}.mt-12{margin-top:12px}.w-100{width:100%}
 
 .btn{
-  border:none;border-radius:10px;padding:10px 14px;font-weight:600;
+  border:none;border-radius:10px;padding:9px 14px;font-weight:600;
   cursor:pointer;background:#1a3b5c;color:var(--text);
   transition:transform .06s ease,opacity .2s
 }
 .btn:active{transform:translateY(1px)}
 .btn--primary{background:var(--primary)}
-.btn--success{background:#0ea5e9} /* blu acqua per call */
+.btn--success{background:#0ea5e9}
 .btn--danger{background:var(--danger)}
 .btn--indigo{background:var(--indigo)}
 
@@ -89,30 +90,30 @@ body{
 
 .called-banner{
   border:1px solid var(--border);border-radius:16px;
-  padding:14px 16px;display:flex;align-items:center;gap:10px;
+  padding:12px 14px;display:flex;align-items:center;gap:10px;
   background:rgba(20,37,61,.6)
 }
 .called-banner--idle{background:rgba(9,25,41,.6)}
 .called-banner--active{background:linear-gradient(90deg, rgba(43,108,176,.32), rgba(43,108,176,.08));border-color:#2b6cb0}
-.called-banner__label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.called-banner__name{font-weight:800;font-size:clamp(22px, 5vw, 34px);line-height:1.15}
+.called-banner__label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.called-banner__name{font-weight:800;font-size:clamp(21px, 5vw, 32px);line-height:1.15}
 
 /* ===== Countdown ===== */
-.progress{position:relative;height:10px;border-radius:999px;background:#0c2742;overflow:hidden}
+.progress{position:relative;height:9px;border-radius:999px;background:#0c2742;overflow:hidden}
 .progress__bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--primary),var(--primary-2));transition:width .2s ease}
 .progress__bar--warn{background:linear-gradient(90deg,#eab308,#f59e0b)}
 .timer{margin-top:6px;font-variant-numeric:tabular-nums;font-weight:700}
 
 /* ===== Pills (quick add) ===== */
 .pills{display:flex;gap:8px;flex-wrap:wrap}
-.pill{padding:8px 12px;border-radius:999px;background:#0f2b49;color:var(--text);border:1px solid var(--border);cursor:pointer}
+.pill{padding:7px 12px;border-radius:999px;background:#0f2b49;color:var(--text);border:1px solid var(--border);cursor:pointer}
 .pill--ghost{background:transparent}
 
 /* ===== Riepilogo offerte ===== */
 .ranking{margin:0;padding:0;list-style:none}
 .ranking__row{
   display:flex;justify-content:space-between;align-items:center;
-  padding:10px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;
+  padding:9px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;
   background:rgba(255,255,255,0.02)
 }
 /* Vincitore nel riepilogo: bordo + sfondo verde */
@@ -120,8 +121,22 @@ body{
 .ranking__name{font-weight:600}
 .ranking__amount{font-weight:700}
 
-/* ===== Lobby (−2pt + leggibilità) ===== */
-.lobby{font-size:11px} /* −4pt rispetto al 15px globale */
+/* ===== Banner di errore (pareggio) ===== */
+.banner{
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.banner--error{
+  color: #ef4444;
+  background: rgba(239, 68, 68, .12);
+  border: 1px solid rgba(239, 68, 68, .35);
+}
+
+/* ===== Lobby (mantenere font attuale) ===== */
+.lobby{font-size:13px} /* resta come prima, non si riduce */
 .list{margin:0;padding:0;list-style:none}
 .list__row{
   display:flex;align-items:center;justify-content:space-between;
@@ -139,14 +154,13 @@ body{
   margin-bottom:8px;
 }
 
-/* Chi ha offerto in LOBBY: SOLO bordo blu, nessuno sfondo
-   (regola più specifica, viene DOPO quella base, quindi non viene sovrascritta) */
+/* Chi ha offerto in LOBBY: SOLO bordo blu, nessuno sfondo */
 .lobby .list__row--bid{
   background:transparent !important;
   border:2px solid rgba(59,130,246,.85) !important; /* blu deciso */
 }
 
-/* Vincitore anche in LOBBY: bordo + sfondo verde (stessa logica) */
+/* Vincitore anche in LOBBY: bordo + sfondo verde */
 .lobby .list__row--win{
   border:2px solid var(--success) !important;
   background:rgba(22,163,74,.15) !important;
@@ -167,18 +181,4 @@ body{
   position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
   background:var(--surface);border:1px solid var(--border);
   padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:50
-}
-
-/* ===== Banner di errore (pareggio) ===== */
-.banner{
-  margin: 10px 0 12px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-weight: 700;
-  letter-spacing: .02em;
-}
-.banner--error{
-  color: #ef4444;
-  background: rgba(239, 68, 68, .12);
-  border: 1px solid rgba(239, 68, 68, .35);
 }
