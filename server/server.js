@@ -112,6 +112,8 @@ io.on('connection', (socket) => {
     // *** NESSUN LIMITE DI BUDGET ***
     lobby.inAuction.bids[socket.id] = numeric;
     socket.emit('auction:bid:ack', { amount: numeric });
+    // NEW: notifica a tutti che questo socket ha offerto (senza rivelare l'importo)
+  io.emit('auction:bid:mark', { socketId: socket.id });
   });
 
   socket.on('disconnect', () => {
