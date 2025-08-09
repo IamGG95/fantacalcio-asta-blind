@@ -1,0 +1,13 @@
+
+services:
+  - type: web
+    name: fantacalcio-asta-server
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 3001
+    rootDir: server
