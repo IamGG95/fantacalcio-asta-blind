@@ -1,6 +1,6 @@
-/* =============================
-   1) server/server.js
-   ============================= */
+/* =====================================
+   File: server/server.js
+   ===================================== */
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -52,9 +52,9 @@ io.on('connection', (socket) => {
     broadcastAdmin();
   });
 
+  // Partecipante entra in lobby con nome squadra
   socket.on('lobby:join', (payload = {}) => {
     const name = payload.name ? String(payload.name) : `Squadra-${socket.id.slice(0,4)}`;
-    // rejoin safe
     lobby.players = lobby.players.filter(p => p.id !== socket.id);
     lobby.players.push({ id: socket.id, name });
     io.emit('lobby:update', lobby.players.map(sanitizePlayer));
