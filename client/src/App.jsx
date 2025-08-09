@@ -1,137 +1,251 @@
-// client/src/App.jsx
-// Aggiornato: rimosso ogni riferimento a budget e "la tua scheda"
-// Solo admin può impostare giocatore e countdown (default 10s), puntate illimitate in crediti
+// client/src/App.jsx — UI rinnovata ripristinata
+// Requisiti attivi:
+// - Solo ADMIN (primo utente) può chiamare il giocatore e cambiare il countdown
+// - Countdown default 10s
+// - Puntata illimitata in crediti (nessun budget; rimossi riferimenti UI al budget e "la tua scheda")
+// - Offerte sempre nascoste fino al reveal
 
-import React, { useState, useEffect } from 'react';
-import io from 'socket.io-client';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { io } from 'socket.io-client';
 import './styles.css';
 
-const socket = io(import.meta.env.VITE_SOCKET_URL);
+const SOCKET_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SOCKET_URL)
+  ? import.meta.env.VITE_SOCKET_URL
+  : 'http://localhost:3001';
 
 export default function App() {
+  const socketRef = useRef(null);
+  const [connected, setConnected] = useState(false);
+  const [currentSocketId, setCurrentSocketId] = useState(null);
+
+  const [name, setName] = useState('');
+  const [joined, setJoined] = useState(false);
   const [players, setPlayers] = useState([]);
-  const [offers, setOffers] = useState([]);
-  const [currentPlayer, setCurrentPlayer] = useState(null);
-  const [settings, setSettings] = useState({ duration: 10 });
+  const [settings, setSettings] = useState({ duration: 10 }); // DEFAULT 10s
+
+  const [callPlayerName, setCallPlayerName] = useState('');
+  const [auction, setAuction] = useState(null); // {playerName, duration, endsAt}
   const [timeLeft, setTimeLeft] = useState(0);
-  const [amIAdmin, setAmIAdmin] = useState(false);
-  const [nickname, setNickname] = useState('');
-  const [inLobby, setInLobby] = useState(true);
-  const [offerAmount, setOfferAmount] = useState('');
+  const timerRef = useRef(null);
+
+  const [myBid, setMyBid] = useState('');
+  const [offers, setOffers] = useState([]);
+  const [winner, setWinner] = useState(null);
+  const [toast, setToast] = useState(null);
+
+  function sanitizePlayers(rawPlayers) {
+    if (!Array.isArray(rawPlayers)) return [];
+    return rawPlayers.map(p => ({ id: String(p.id || ''), name: String(p.name || 'sconosciuto') }));
+  }
+
+  const amIAdmin = useMemo(() => currentSocketId && players.length && players[0] && players[0].id === currentSocketId, [currentSocketId, players]);
 
   useEffect(() => {
-    socket.on('init', ({ players, settings, currentPlayer, adminId }) => {
-      setPlayers(players);
-      setSettings(settings);
-      setCurrentPlayer(currentPlayer);
-      setAmIAdmin(socket.id === adminId);
-    });
+    const s = io(SOCKET_URL, { autoConnect: true });
+    socketRef.current = s;
 
-    socket.on('updatePlayers', setPlayers);
-    socket.on('updateSettings', setSettings);
-    socket.on('playerCalled', (player) => {
-      setCurrentPlayer(player);
+    s.on('connect', () => { setConnected(true); setCurrentSocketId(s.id); });
+    s.on('disconnect', () => { setConnected(false); setCurrentSocketId(null); });
+
+    s.on('lobby:update', (pls) => setPlayers(sanitizePlayers(pls)));
+    s.on('settings:update', (newSettings) => setSettings({ duration: Number(newSettings && newSettings.duration) || 10 }));
+
+    s.on('auction:start', (a) => {
+      const playerName = a && a.playerName ? String(a.playerName) : 'Giocatore sconosciuto';
+      const duration = a && Number.isFinite(Number(a.duration)) ? Number(a.duration) : settings.duration || 10;
+      const endsAt = a && Number.isFinite(Number(a.endsAt)) ? Number(a.endsAt) : Date.now() + duration * 1000;
+      const auctionObj = { playerName, duration, endsAt };
+
+      setAuction(auctionObj);
       setOffers([]);
-    });
-    socket.on('startCountdown', setTimeLeft);
-    socket.on('tick', setTimeLeft);
-    socket.on('offersRevealed', setOffers);
+      setWinner(null);
+      showToast(`Asta avviata: ${playerName}`);
 
-    return () => {
-      socket.off();
-    };
+      const update = () => {
+        const left = Math.max(0, Math.round((auctionObj.endsAt - Date.now()) / 1000));
+        setTimeLeft(left);
+        if (left <= 0 && timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+      };
+      update();
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(update, 250);
+    });
+
+    s.on('auction:bid:ack', ({ amount }) => { showToast(`Offerta inviata: ${amount} crediti`); });
+
+    s.on('auction:end', (payload) => {
+      try {
+        const sanitizedOffers = Array.isArray(payload && payload.offers)
+          ? payload.offers.map(o => ({ socketId: String(o.socketId || ''), name: String(o.name || 'sconosciuto'), amount: Number.isFinite(Number(o.amount)) ? Number(o.amount) : 0 }))
+          : [];
+        const sanitizedWinner = payload && payload.winner
+          ? { socketId: String(payload.winner.socketId || ''), name: String(payload.winner.name || ''), amount: Number(payload.winner.amount || 0) }
+          : null;
+
+        setOffers(sanitizedOffers);
+        setWinner(sanitizedWinner);
+        setAuction(null);
+        if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+        setTimeLeft(0);
+
+        showToast(sanitizedWinner ? `Aggiudicatario: ${sanitizedWinner.name} (${sanitizedWinner.amount} crediti)` : 'Nessuna offerta inviata');
+      } catch (err) { console.error('Error processing auction:end', err); }
+    });
+
+    return () => { if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; } s.off(); s.disconnect(); };
   }, []);
 
-  const joinLobby = () => {
-    if (!nickname.trim()) return;
-    socket.emit('join', nickname.trim());
-    setInLobby(false);
-  };
+  function joinLobby() {
+    if (!name) return alert('Inserisci un nickname');
+    if (!socketRef.current || !socketRef.current.connected) return alert('Socket non connesso');
+    socketRef.current.emit('lobby:join', { name });
+    setJoined(true);
+  }
 
-  const callPlayer = (name) => {
-    if (!name.trim()) return;
-    socket.emit('callPlayer', name.trim());
-  };
+  function leaveLobby() {
+    if (socketRef.current && socketRef.current.connected) socketRef.current.emit('lobby:leave');
+    setJoined(false);
+  }
 
-  const sendOffer = () => {
-    if (!offerAmount) return;
-    socket.emit('sendOffer', { amount: Number(offerAmount) });
-    setOfferAmount('');
-  };
+  // SOLO ADMIN può cambiare countdown
+  function setServerSettingsDuration(newDuration) {
+    if (!amIAdmin) return alert('Solo l\'admin può modificare il countdown');
+    if (!socketRef.current || !socketRef.current.connected) return;
+    const numeric = Number(newDuration);
+    if (!Number.isFinite(numeric) || numeric < 1) return alert('Durata non valida');
+    socketRef.current.emit('settings:set', { duration: Math.round(numeric) });
+    showToast(`Countdown impostato a ${Math.round(numeric)}s`);
+  }
 
-  const changeDuration = (val) => {
-    socket.emit('changeDuration', Number(val));
-  };
+  // SOLO ADMIN può chiamare il giocatore
+  function callPlayer() {
+    if (!amIAdmin) return alert('Solo l\'admin può chiamare un giocatore');
+    if (!callPlayerName) return alert('Inserisci il nome del giocatore');
+    if (!socketRef.current || !socketRef.current.connected) return alert('Socket non connesso');
+    const durationToUse = settings && Number.isFinite(Number(settings.duration)) ? Number(settings.duration) : 10;
+    socketRef.current.emit('auction:call', { playerName: callPlayerName, duration: durationToUse });
+    setCallPlayerName('');
+  }
+
+  // Puntata illimitata in crediti
+  function sendBid() {
+    if (!auction) return alert('Nessuna asta in corso');
+    const numeric = Number(myBid);
+    if (!Number.isFinite(numeric) || numeric < 0) return alert('Offerta non valida');
+    socketRef.current.emit('auction:bid', { amount: numeric });
+  }
+
+  function quickAdd(n) { setMyBid(prev => String(Number(prev || 0) + n)); }
+  function showToast(message) { setToast(message); window.clearTimeout(showToast._t); showToast._t = window.setTimeout(() => setToast(null), 2200); }
+
+  const totalDuration = auction ? auction.duration : settings.duration;
+  const pct = auction ? Math.max(0, Math.min(100, Math.round(((totalDuration - timeLeft) / totalDuration) * 100))) : 0;
 
   return (
     <div className="app">
-      {inLobby ? (
-        <div className="lobby">
-          <h1>Fantacalcio - Asta al buio</h1>
-          <input
-            placeholder="Il tuo nickname"
-            value={nickname}
-            onChange={(e) => setNickname(e.target.value)}
-          />
-          <button onClick={joinLobby}>Entra</button>
+      <header className="app__header">
+        <div className="brand">⚽︎ Fantacalcio – Asta al buio</div>
+        <div className="status">
+          <span className={"dot " + (connected ? 'dot--on' : 'dot--off')} aria-label={connected ? 'connesso' : 'disconnesso'} />
+          <span className="status__text">{connected ? 'Online' : 'Offline'}</span>
         </div>
+      </header>
+
+      {!joined ? (
+        <main className="container">
+          <section className="card">
+            <h2>Entra nella lobby</h2>
+            <label className="label" htmlFor="nickname">Nickname</label>
+            <input id="nickname" className="input" placeholder="Es. Gabriele" value={name} onChange={e => setName(e.target.value)} />
+            <button className="btn btn--primary w-100 mt-12" onClick={joinLobby}>Entra</button>
+            <p className="muted mt-8">Socket: {connected ? 'Connesso' : 'Non connesso'}</p>
+          </section>
+        </main>
       ) : (
-        <div className="game">
-          <h2>Giocatore in asta: {currentPlayer || '—'}</h2>
-          {amIAdmin && (
-            <div className="admin-controls">
-              <input
-                placeholder="Nome giocatore"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') callPlayer(e.target.value);
-                }}
-              />
-              <div>
-                <label>Countdown (s):</label>
-                <input
-                  type="number"
-                  min="1"
-                  defaultValue={settings.duration}
-                  onBlur={(e) => changeDuration(e.target.value)}
-                />
-              </div>
-            </div>
-          )}
-
-          {timeLeft > 0 && (
-            <div>
-              <p>Tempo rimanente: {timeLeft}s</p>
-              <input
-                type="number"
-                placeholder="Offerta (crediti)"
-                value={offerAmount}
-                onChange={(e) => setOfferAmount(e.target.value)}
-              />
-              <button onClick={sendOffer}>Invia offerta</button>
-            </div>
-          )}
-
-          {offers.length > 0 && (
-            <div className="offers">
-              <h3>Offerte</h3>
-              <ul>
-                {offers.map((o, i) => (
-                  <li key={i}>{o.name}: {o.amount} crediti</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="players">
-            <h3>Partecipanti</h3>
-            <ul>
-              {players.map((p) => (
-                <li key={p.id}>{p.name} {p.id === socket.id && '(Tu)'} {p.id === socket.id && amIAdmin && '[Admin]'}</li>
+        <main className="container grid">
+          <section className="card card--stretch">
+            <div className="card__header"><h2>Lobby</h2></div>
+            <ul className="list">
+              {players.map(p => (
+                <li key={p.id} className="list__row">
+                  <div className="chip">
+                    <span className="chip__name">{p.name}</span>
+                    {p.id === currentSocketId && <span className="badge">tu</span>}
+                    {p.id === (players[0] && players[0].id) && <span className="badge badge--gold">admin</span>}
+                  </div>
+                </li>
               ))}
             </ul>
-          </div>
-        </div>
+            <div className="row mt-12">
+              <button className="btn btn--danger" onClick={leaveLobby}>Esci</button>
+            </div>
+          </section>
+
+          <section className="card card--stretch">
+            <div className="card__header"><h2>Chiamata giocatore</h2></div>
+            {amIAdmin ? (
+              <>
+                <div className="row">
+                  <input className="input flex-1" placeholder="Es. Lautaro Martinez" value={callPlayerName} onChange={e => setCallPlayerName(e.target.value)} />
+                  <button className="btn btn--success" onClick={callPlayer}>Chiama</button>
+                </div>
+                <p className="muted mt-8">Countdown attuale: <strong>{settings.duration}s</strong></p>
+                <div className="row mt-8">
+                  <input type="number" min="1" className="input" defaultValue={settings.duration} onBlur={(e) => setServerSettingsDuration(e.target.value)} />
+                  <span className="muted">(solo admin)</span>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="muted">In attesa che l'admin chiami un giocatore…</p>
+                <p className="muted mt-8">Countdown attuale: <strong>{settings.duration}s</strong></p>
+              </>
+            )}
+          </section>
+
+          <section className="card">
+            <div className="card__header"><h3>Asta in corso</h3></div>
+            {auction ? (
+              <>
+                <div className="kv"><span>Giocatore</span><strong>{String(auction.playerName)}</strong></div>
+                <div className="progress mt-8" aria-label="conto alla rovescia">
+                  <div className={"progress__bar " + (timeLeft <= 3 ? 'progress__bar--warn' : '')} style={{ width: `${pct}%` }} />
+                </div>
+                <div className="timer">{timeLeft}s</div>
+                <div className="row mt-12">
+                  <input className="input flex-1" inputMode="numeric" pattern="[0-9]*" placeholder="Inserisci offerta (crediti)" value={myBid} onChange={e => setMyBid(e.target.value)} />
+                  <button className="btn btn--indigo" onClick={sendBid}>Invia</button>
+                </div>
+                <div className="pills mt-8">
+                  {[1,5,10,20].map(n => (<button key={n} className="pill" onClick={() => quickAdd(n)}>+{n}</button>))}
+                  <button className="pill pill--ghost" onClick={() => setMyBid('')}>Reset</button>
+                </div>
+              </>
+            ) : (
+              <p className="muted">Nessuna asta in corso</p>
+            )}
+          </section>
+
+          <section className="card">
+            <div className="card__header"><h3>Ultimo risultato</h3></div>
+            {offers && offers.length ? (
+              <ol className="ranking">
+                {offers.map((o, idx) => (
+                  <li key={o.socketId || idx} className={"ranking__row " + (winner && winner.socketId === o.socketId ? 'ranking__row--win' : '')}>
+                    <span className="ranking__name">{String(o.name)}</span>
+                    <span className="ranking__amount">{String(o.amount)} crediti</span>
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              <p className="muted">Nessun risultato recente</p>
+            )}
+          </section>
+        </main>
       )}
+
+      {toast && (<div className="toast" role="status" aria-live="polite">{toast}</div>)}
+      <footer className="app__footer"><small>Made for friends ⚽︎</small></footer>
     </div>
   );
 }
