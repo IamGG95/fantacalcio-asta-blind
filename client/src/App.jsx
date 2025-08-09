@@ -169,7 +169,7 @@ export default function App() {
           <section className="card">
             <h2 className="section-title">Entra nella lobby</h2>
             <label className="label" htmlFor="nickname">Nickname</label>
-            <input id="nickname" className="input" placeholder="Es. Gabriele" value={name} onChange={e => setName(e.target.value)} />
+            <input id="nickname" className="input" placeholder="NOME SQUADRA" value={name} onChange={e => setName(e.target.value)} />
             <button className="btn btn--primary w-100 mt-12" onClick={joinLobby}>Entra</button>
             <p className="muted mt-8">Socket: {connected ? 'Connesso' : 'Non connesso'}</p>
           </section>
