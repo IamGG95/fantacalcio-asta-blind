@@ -168,3 +168,17 @@ body{
   background:var(--surface);border:1px solid var(--border);
   padding:10px 14px;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,.35);z-index:50
 }
+
+/* ===== Banner di errore (pareggio) ===== */
+.banner{
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-weight: 700;
+  letter-spacing: .02em;
+}
+.banner--error{
+  color: #ef4444;
+  background: rgba(239, 68, 68, .12);
+  border: 1px solid rgba(239, 68, 68, .35);
+}
