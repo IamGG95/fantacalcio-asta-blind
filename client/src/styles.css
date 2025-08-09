@@ -131,14 +131,28 @@ body{
 .badge{display:inline-flex;align-items:center;justify-content:center;min-height:20px;padding:2px 8px;border-radius:999px;background:#173f65}
 .badge--offer{background:#1d9b4f;color:#0b0d12}
 
-/* Chi ha offerto in LOBBY: SOLO bordo blu, senza sfondo */
-.list__row--bid{background:transparent;border:2px solid rgba(59,130,246,.85)}
+/* Layout e bordo base per le righe in Lobby */
+.lobby .list__row{
+  padding:10px 14px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  margin-bottom:8px;
+}
 
-/* Vincitore anche in LOBBY: bordo + sfondo verde */
-.list__row--win{border:2px solid var(--success);background:rgba(22,163,74,.15)}
+/* Chi ha offerto in LOBBY: SOLO bordo blu, nessuno sfondo
+   (regola più specifica, viene DOPO quella base, quindi non viene sovrascritta) */
+.lobby .list__row--bid{
+  background:transparent !important;
+  border:2px solid rgba(59,130,246,.85) !important; /* blu deciso */
+}
+
+/* Vincitore anche in LOBBY: bordo + sfondo verde (stessa logica) */
+.lobby .list__row--win{
+  border:2px solid var(--success) !important;
+  background:rgba(22,163,74,.15) !important;
+}
 
 /* Micro-tuning leggibilità lobby */
-.lobby .list__row{padding:10px 14px;border-radius:12px;border:1px solid var(--border);margin-bottom:8px}
 .lobby .chip__name{font-weight:600;letter-spacing:.01em}
 .lobby .badge{transform:translateY(-1px)}
 
