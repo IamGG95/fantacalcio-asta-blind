@@ -218,6 +218,13 @@ export default function App() {
     setCallPlayerName('');
   }
 
+  // SOLO ADMIN: interrompi asta
+  function stopAuction() {
+    if (!isAdmin) return;
+    if (!socketRef.current || !socketRef.current.connected) return;
+    socketRef.current.emit('auction:stop');
+  }
+
   // Partecipanti: possono solo offrire
   function sendBid() {
     if (!auction) return alert('Nessuna asta in corso');
@@ -242,6 +249,11 @@ export default function App() {
   const progressPct = auction
     ? Math.max(0, Math.min(100, 100 - (timeLeft / (auction.duration || 1)) * 100))
     : 0;
+
+  // utile all'admin per capire se hanno offerto tutti
+  const totalParticipants = lobbyList.length;
+  const totalBidders = bidderIds.size;
+  const allBid = auction && totalParticipants > 0 && totalBidders >= totalParticipants;
 
   return (
     <div className="app">
@@ -284,17 +296,32 @@ export default function App() {
               <div className="auction__controls">
                 <span className="muted">Countdown: <strong>{settings.duration}s</strong></span>
                 {isAdmin && (
-                  <input
-                    className="input input--sm"
-                    type="number"
-                    min="1"
-                    defaultValue={settings.duration}
-                    onBlur={(e) => setServerSettingsDuration(e.target.value)}
-                    title="Modifica countdown (solo admin)"
-                  />
+                  <>
+                    <input
+                      className="input input--sm"
+                      type="number"
+                      min="1"
+                      defaultValue={settings.duration}
+                      onBlur={(e) => setServerSettingsDuration(e.target.value)}
+                      title="Modifica countdown (solo admin)"
+                    />
+                    {auction && (
+                      <button className="btn btn--danger" onClick={stopAuction} title="Interrompi subito l'asta">
+                        Interrompi
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </div>
+
+            {/* piccolo promemoria per admin: quante offerte sono arrivate */}
+            {isAdmin && auction && (
+              <p className="muted" style={{ margin: '6px 0 0' }}>
+                Offerte ricevute: <strong>{totalBidders}</strong> / <strong>{totalParticipants}</strong>{' '}
+                {allBid ? '— Tutti hanno offerto' : ''}
+              </p>
+            )}
 
             {/* Banner giocatore ben evidenziato */}
             <div className={'called-banner ' + (auction ? 'called-banner--active' : 'called-banner--idle')}>
