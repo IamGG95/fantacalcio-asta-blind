@@ -1,9 +1,10 @@
-// client/src/App.jsx — Auction panel unificato + Lobby discreta in basso
+// client/src/App.jsx — Auction panel unificato + evidenza offerte + Lobby discreta in basso
 // Requisiti:
 // - Solo ADMIN (primo utente) può chiamare il giocatore e cambiare il countdown (default 10s)
 // - Puntata illimitata in crediti, nessun budget
 // - Offerte nascoste fino al reveal
 // - UI: sezione unica "Asta" con giocatore ben evidenziato; Lobby spostata in basso e più discreta
+// - NEW: evidenzia nella lobby chi ha già inviato un’offerta durante l’asta corrente
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
@@ -32,6 +33,7 @@ export default function App() {
   const [offers, setOffers] = useState([]);
   const [winner, setWinner] = useState(null);
   const [toast, setToast] = useState(null);
+  const [bidderIds, setBidderIds] = useState(() => new Set()); // socketIds che hanno offerto nell'asta corrente
 
   function sanitizePlayers(rawPlayers) {
     if (!Array.isArray(rawPlayers)) return [];
@@ -59,6 +61,7 @@ export default function App() {
       setAuction(auctionObj);
       setOffers([]);
       setWinner(null);
+      setBidderIds(new Set()); // reset evidenze offerte
       showToast(`Asta avviata: ${playerName}`);
 
       const update = () => {
@@ -72,6 +75,16 @@ export default function App() {
     });
 
     s.on('auction:bid:ack', ({ amount }) => { showToast(`Offerta inviata: ${amount} crediti`); });
+
+    // NEW: evidenza in lobby di chi ha appena inviato l'offerta
+    s.on('auction:bid:mark', ({ socketId }) => {
+      if (!socketId) return;
+      setBidderIds(prev => {
+        const next = new Set(prev);
+        next.add(String(socketId));
+        return next;
+      });
+    });
 
     s.on('auction:end', (payload) => {
       try {
@@ -87,6 +100,7 @@ export default function App() {
         setAuction(null);
         if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
         setTimeLeft(0);
+        setBidderIds(new Set());
 
         showToast(sanitizedWinner ? `Aggiudicatario: ${sanitizedWinner.name} (${sanitizedWinner.amount} crediti)` : 'Nessuna offerta inviata');
       } catch (err) { console.error('Error processing auction:end', err); }
@@ -129,6 +143,8 @@ export default function App() {
     if (!auction) return alert('Nessuna asta in corso');
     const numeric = Number(myBid);
     if (!Number.isFinite(numeric) || numeric < 0) return alert('Offerta non valida');
+    // evidenzia subito me stesso lato client (fallback, in attesa del mark del server)
+    setBidderIds(prev => { const next = new Set(prev); if (currentSocketId) next.add(String(currentSocketId)); return next; });
     socketRef.current.emit('auction:bid', { amount: numeric });
   }
 
@@ -151,7 +167,7 @@ export default function App() {
       {!joined ? (
         <main className="container">
           <section className="card">
-            <h2>Entra nella lobby</h2>
+            <h2 className="section-title">Entra nella lobby</h2>
             <label className="label" htmlFor="nickname">Nickname</label>
             <input id="nickname" className="input" placeholder="Es. Gabriele" value={name} onChange={e => setName(e.target.value)} />
             <button className="btn btn--primary w-100 mt-12" onClick={joinLobby}>Entra</button>
@@ -163,7 +179,7 @@ export default function App() {
           {/* AUCTION PANEL UNIFICATO */}
           <section className="card card--stretch">
             <div className="auction__header">
-              <div className="auction__title">Asta in corso</div>
+              <div className="auction__title section-title">Asta in corso</div>
               <div className="auction__controls">
                 <span className="muted">Countdown: <strong>{settings.duration}s</strong></span>
                 {amIAdmin && (
@@ -247,17 +263,21 @@ export default function App() {
 
           {/* LOBBY compatta e in secondo piano */}
           <section className="card card--muted mt-12">
-            <div className="card__header"><h2>Lobby</h2></div>
+            <div className="card__header"><h2 className="section-title">Lista squadre in lobby</h2></div>
             <ul className="list">
-              {players.map(p => (
-                <li key={p.id} className="list__row">
-                  <div className="chip">
-                    <span className="chip__name">{p.name}</span>
-                    {p.id === currentSocketId && <span className="badge">tu</span>}
-                    {p.id === (players[0] && players[0].id) && <span className="badge badge--gold">admin</span>}
-                  </div>
-                </li>
-              ))}
+              {players.map(p => {
+                const hasBid = auction && bidderIds.has(p.id);
+                return (
+                  <li key={p.id} className={"list__row " + (hasBid ? 'list__row--bid' : '')}>
+                    <div className="chip">
+                      <span className="chip__name">{p.name}</span>
+                      {p.id === currentSocketId && <span className="badge">tu</span>}
+                      {p.id === (players[0] && players[0].id) && <span className="badge badge--gold">admin</span>}
+                      {hasBid && <span className="badge badge--offer">ha offerto</span>}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
             <div className="row mt-12">
               <button className="btn btn--danger" onClick={leaveLobby}>Esci</button>
