@@ -17,7 +17,7 @@ const PORT = process.env.PORT || 3001;
 let lobby = {
   players: [], // {id, name}
   adminId: null, // impostato SOLO via admin:claim
-  inAuction: null, // {playerName, callerId, duration, endsAt, bids:{socketId:amount}, tickTimer}
+  inAuction: null, // {playerName, callerId, duration, endsAt, bids:{socketId:amount}, tickTimer, timeoutId}
   settings: { duration: 30 }, // DEFAULT 30s
 };
 
@@ -43,20 +43,36 @@ function computeAuctionResult(auction) {
   // Determinazione vincitore o pareggio
   let winner = null;
   let tie = false;
-
   if (offers.length >= 2) {
     const topAmount = offers[0].amount;
     const tiedTop = offers.filter((o) => o.amount === topAmount);
-    if (tiedTop.length > 1) {
-      tie = true; // pareggio sul massimo
-    } else {
-      winner = offers[0];
-    }
+    if (tiedTop.length > 1) tie = true;
+    else winner = offers[0];
   } else if (offers.length === 1) {
     winner = offers[0];
   }
-
   return { offers, winner, tie };
+}
+
+function endAuctionNow(reason = 'normal') {
+  const auction = lobby.inAuction;
+  if (!auction) return;
+
+  const { offers, winner, tie } = computeAuctionResult(auction);
+
+  io.emit('auction:end', {
+    playerName: String(auction.playerName),
+    offers,
+    winner: winner
+      ? { socketId: winner.socketId, name: winner.name, amount: winner.amount }
+      : null,
+    tie,
+    reason,
+  });
+
+  if (auction.tickTimer) try { clearInterval(auction.tickTimer); } catch {}
+  if (auction.timeoutId) try { clearTimeout(auction.timeoutId); } catch {}
+  lobby.inAuction = null;
 }
 
 io.on('connection', (socket) => {
@@ -103,19 +119,29 @@ io.on('connection', (socket) => {
   });
 
   // Solo ADMIN può cambiare il countdown
-  socket.on('settings:set', (newSettings = {}) => {
-    if (socket.id !== lobby.adminId) return;
+  socket.on('settings:set', (newSettings = {}, ack) => {
+    if (socket.id !== lobby.adminId) {
+      if (ack) ack({ ok: false, reason: 'not-admin' });
+      return;
+    }
     const duration = Number.isFinite(Number(newSettings.duration))
       ? Math.max(1, Number(newSettings.duration))
       : lobby.settings.duration;
     lobby.settings.duration = duration;
     io.emit('settings:update', lobby.settings);
+    if (ack) ack({ ok: true, duration });
   });
 
   // Solo ADMIN può chiamare il giocatore
-  socket.on('auction:call', (payload = {}) => {
-    if (socket.id !== lobby.adminId) return;
-    if (lobby.inAuction) return; // già in corso
+  socket.on('auction:call', (payload = {}, ack) => {
+    if (socket.id !== lobby.adminId) {
+      if (ack) ack({ ok: false, reason: 'not-admin' });
+      return;
+    }
+    if (lobby.inAuction) {
+      if (ack) ack({ ok: false, reason: 'already-running' });
+      return;
+    }
 
     const playerName = payload.playerName ? String(payload.playerName) : 'Giocatore sconosciuto';
     const duration = Number.isFinite(Number(payload.duration))
@@ -132,6 +158,7 @@ io.on('connection', (socket) => {
       endsAt,
       bids: {},
       tickTimer: null,
+      timeoutId: null,
     };
 
     io.emit('auction:start', { playerName, duration, endsAt, serverNow: now });
@@ -143,57 +170,48 @@ io.on('connection', (socket) => {
     }, 500);
 
     const durationMs = endsAt - Date.now();
-    setTimeout(() => {
-      const auction = lobby.inAuction;
-      if (!auction) return;
-
-      const { offers, winner, tie } = computeAuctionResult(auction);
-
-      io.emit('auction:end', {
-        playerName: String(auction.playerName),
-        offers,
-        winner: winner
-          ? { socketId: winner.socketId, name: winner.name, amount: winner.amount }
-          : null,
-        tie,
-      });
-
-      if (lobby.inAuction && lobby.inAuction.tickTimer) clearInterval(lobby.inAuction.tickTimer);
-      lobby.inAuction = null;
+    lobby.inAuction.timeoutId = setTimeout(() => {
+      if (!lobby.inAuction) return; // già chiusa
+      endAuctionNow('timeout');
     }, Math.max(0, durationMs) + 250);
+
+    if (ack) ack({ ok: true, playerName, duration, endsAt });
   });
 
   // Interrompi anticipatamente l'asta (solo ADMIN)
-  socket.on('auction:stop', () => {
-    if (socket.id !== lobby.adminId) return;
-    if (!lobby.inAuction) return;
-
-    const auction = lobby.inAuction;
-    const { offers, winner, tie } = computeAuctionResult(auction);
-
-    io.emit('auction:end', {
-      playerName: String(auction.playerName),
-      offers,
-      winner: winner
-        ? { socketId: winner.socketId, name: winner.name, amount: winner.amount }
-        : null,
-      tie,
-    });
-
-    if (lobby.inAuction && lobby.inAuction.tickTimer) clearInterval(lobby.inAuction.tickTimer);
-    lobby.inAuction = null;
+  socket.on('auction:stop', (payload, ack) => {
+    if (socket.id !== lobby.adminId) {
+      if (ack) ack({ ok: false, reason: 'not-admin' });
+      return;
+    }
+    if (!lobby.inAuction) {
+      if (ack) ack({ ok: false, reason: 'no-auction' });
+      return;
+    }
+    endAuctionNow('stopped');
+    if (ack) ack({ ok: true });
   });
 
   // Offerte (vietato all'admin)
-  socket.on('auction:bid', (payload = {}) => {
-    if (!lobby.inAuction) return;
-    if (socket.id === lobby.adminId) return; // admin non può offrire
+  socket.on('auction:bid', (payload = {}, ack) => {
+    if (!lobby.inAuction) {
+      if (ack) ack && ack({ ok: false, reason: 'no-auction' });
+      return;
+    }
+    if (socket.id === lobby.adminId) {
+      if (ack) ack({ ok: false, reason: 'admin-cannot-bid' });
+      return; // admin non può offrire
+    }
     const numeric = Number.isFinite(Number(payload.amount)) ? Number(payload.amount) : NaN;
-    if (isNaN(numeric) || numeric < 0) return;
+    if (isNaN(numeric) || numeric < 0) {
+      if (ack) ack({ ok: false, reason: 'invalid-amount' });
+      return;
+    }
     lobby.inAuction.bids[socket.id] = numeric;
     socket.emit('auction:bid:ack', { amount: numeric });
     // Notifica a tutti chi ha offerto (senza importo)
     io.emit('auction:bid:mark', { socketId: socket.id });
+    if (ack) ack({ ok: true });
   });
 
   socket.on('disconnect', () => {
@@ -207,4 +225,3 @@ io.on('connection', (socket) => {
 
 app.get('/', (req, res) => res.send('Fantacalcio Asta - Server attivo'));
 server.listen(PORT, () => console.log('Server listening on', PORT));
-
